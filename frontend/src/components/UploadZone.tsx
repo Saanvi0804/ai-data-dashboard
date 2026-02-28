@@ -27,7 +27,7 @@ export default function UploadZone({ onUpload }: Props) {
     formData.append("file", file);
 
     try {
-      const res = await axios.post("http://localhost:8000/api/upload", formData, {
+      const res = await axios.post("https://ai-data-dashboard.onrender.com/api/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       onUpload({ ...res.data, filename: file.name });

@@ -76,7 +76,7 @@ export default function Home() {
     if (!dataset) return;
     setLoadingStats(true);
     axios
-      .get(`http://localhost:8000/api/stats/${dataset.dataset_id}`)
+      .get(`https://ai-data-dashboard.onrender.com/api/stats/${dataset.dataset_id}`)
       .then((res) => setStatsData(res.data))
       .catch(console.error)
       .finally(() => setLoadingStats(false));

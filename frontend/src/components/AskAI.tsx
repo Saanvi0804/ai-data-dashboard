@@ -37,7 +37,7 @@ export default function AskAI({ datasetId, messages, setMessages }: Props) {
     setIsLoading(true);
 
     try {
-      const res = await axios.post("http://localhost:8000/api/query", {
+      const res = await axios.post("https://ai-data-dashboard.onrender.com/api/query", {
         dataset_id: datasetId,
         question,
         history: messages,

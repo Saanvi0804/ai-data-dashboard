@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
-import AuthPage from "@/components/AuthPage";
+import AuthPage from "../components/AuthPage";
 import UploadZone from "@/components/UploadZone";
 import DataTable from "@/components/DataTable";
 import StatsBar from "@/components/StatsBar";

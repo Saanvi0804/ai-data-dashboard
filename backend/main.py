@@ -22,26 +22,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(upload.router, prefix="/api")
-app.include_router(dataset.router, prefix="/api")
-app.include_router(stats.router, prefix="/api")
-app.include_router(query.router, prefix="/api")
-app.include_router(auth.router, prefix="/api")
+app.include_router(auth.router, prefix="/api/auth")
+app.include_router(upload.router, prefix="/api/upload")
+app.include_router(dataset.router, prefix="/api/dataset")
+app.include_router(stats.router, prefix="/api/stats")
+app.include_router(query.router, prefix="/api/query")
 
 
 def cleanup_old_datasets():
-    """Delete datasets older than 24 hours."""
     print("Running cleanup job...")
     db = SessionLocal()
     try:
         cutoff = datetime.utcnow() - timedelta(hours=24)
         old_datasets = db.query(Dataset).filter(Dataset.created_at < cutoff).all()
         for record in old_datasets:
-            delete_dataset(record.id)  # delete pickle file
+            delete_dataset(record.id)
             db.delete(record)
-            print(f"Deleted dataset {record.id} for user {record.user_id}")
         db.commit()
-        print(f"Cleanup done. Removed {len(old_datasets)} datasets.")
     finally:
         db.close()
 
@@ -49,7 +46,6 @@ def cleanup_old_datasets():
 @app.on_event("startup")
 def startup():
     create_tables()
-    # Run cleanup every hour
     scheduler = BackgroundScheduler()
     scheduler.add_job(cleanup_old_datasets, "interval", hours=1)
     scheduler.start()

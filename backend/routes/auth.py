@@ -49,7 +49,7 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     return {"token": token, "email": user.email}
 
 
-@router.get("/auth/me")
+@router.get("/me")
 def me(user_id: str = Depends(get_current_user), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:

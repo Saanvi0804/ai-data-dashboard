@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from database import get_db, User
-from auth import hash_password, verify_password, create_token
+from auth import hash_password, verify_password, create_token, get_current_user
 import uuid
 
 router = APIRouter()

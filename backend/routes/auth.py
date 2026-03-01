@@ -18,7 +18,7 @@ class LoginRequest(BaseModel):
     password: str
 
 
-@router.post("/auth/register")
+@router.post("/register")
 def register(req: RegisterRequest, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.email == req.email).first()
     if existing:
@@ -39,7 +39,7 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     return {"token": token, "email": user.email}
 
 
-@router.post("/auth/login")
+@router.post("/login")
 def login(req: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == req.email).first()
     if not user or not verify_password(req.password, user.hashed_password):

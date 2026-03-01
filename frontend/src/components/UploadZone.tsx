@@ -4,11 +4,14 @@ import { useState, useRef } from "react";
 import axios from "axios";
 import { DatasetInfo } from "@/app/page";
 
+const API = "https://ai-data-dashboard.onrender.com";
+
 interface Props {
   onUpload: (data: DatasetInfo) => void;
+  token: string;
 }
 
-export default function UploadZone({ onUpload }: Props) {
+export default function UploadZone({ onUpload, token }: Props) {
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,12 +30,15 @@ export default function UploadZone({ onUpload }: Props) {
     formData.append("file", file);
 
     try {
-      const res = await axios.post("https://ai-data-dashboard.onrender.com/api/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      const res = await axios.post(`${API}/api/upload`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
       });
       onUpload({ ...res.data, filename: file.name });
     } catch (err: any) {
-      setError(err?.response?.data?.detail || "Upload failed. Is the backend running?");
+      setError(err?.response?.data?.detail || "Upload failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -52,13 +58,9 @@ export default function UploadZone({ onUpload }: Props) {
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
-        className={`
-          w-full max-w-xl border-2 border-dashed rounded-2xl p-16 text-center cursor-pointer transition-all
-          ${dragging
-            ? "border-indigo-500 bg-indigo-950/30"
-            : "border-gray-700 hover:border-gray-500 bg-gray-900/50"
-          }
-        `}
+        className={`w-full max-w-xl border-2 border-dashed rounded-2xl p-16 text-center cursor-pointer transition-all ${
+          dragging ? "border-indigo-500 bg-indigo-950/30" : "border-gray-700 hover:border-gray-500 bg-gray-900/50"
+        }`}
       >
         <input
           ref={inputRef}
@@ -67,7 +69,6 @@ export default function UploadZone({ onUpload }: Props) {
           className="hidden"
           onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
         />
-
         {loading ? (
           <div className="space-y-3">
             <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -87,10 +88,7 @@ export default function UploadZone({ onUpload }: Props) {
           {error}
         </p>
       )}
-
-      <p className="mt-6 text-xs text-gray-600">
-        Supported format: .csv — Any size dataset works
-      </p>
+      <p className="mt-6 text-xs text-gray-600">Files are automatically deleted after 24 hours</p>
     </div>
   );
 }

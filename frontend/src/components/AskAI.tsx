@@ -4,10 +4,13 @@ import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import { Message } from "@/app/page";
 
+const API = "https://ai-data-dashboard.onrender.com";
+
 interface Props {
   datasetId: string;
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  token: string;
 }
 
 const SUGGESTED_QUESTIONS = [
@@ -18,7 +21,7 @@ const SUGGESTED_QUESTIONS = [
   "What is the total revenue across all transactions?",
 ];
 
-export default function AskAI({ datasetId, messages, setMessages }: Props) {
+export default function AskAI({ datasetId, messages, setMessages, token }: Props) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -37,11 +40,11 @@ export default function AskAI({ datasetId, messages, setMessages }: Props) {
     setIsLoading(true);
 
     try {
-      const res = await axios.post("https://ai-data-dashboard.onrender.com/api/query", {
-        dataset_id: datasetId,
-        question,
-        history: messages,
-      });
+      const res = await axios.post(
+        `${API}/api/query`,
+        { dataset_id: datasetId, question, history: messages },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       setMessages([...newMessages, { role: "assistant", content: res.data.answer }]);
     } catch {
       setMessages([...newMessages, { role: "assistant", content: "Sorry, something went wrong. Please try again." }]);
@@ -52,16 +55,13 @@ export default function AskAI({ datasetId, messages, setMessages }: Props) {
 
   return (
     <div className="flex flex-col h-[600px]">
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto space-y-4 pr-1 mb-4">
         {messages.length === 0 ? (
           <div className="space-y-5 pt-4">
             <div className="text-center">
               <div className="text-4xl mb-3">🤖</div>
               <p className="text-white font-semibold text-lg">Ask anything about your data</p>
-              <p className="text-gray-400 text-sm mt-1">
-                I have full context of your dataset and can answer questions instantly.
-              </p>
+              <p className="text-gray-400 text-sm mt-1">I have full context of your dataset and can answer questions instantly.</p>
             </div>
             <div className="space-y-2">
               <p className="text-xs text-gray-500 uppercase tracking-wider">Suggested questions</p>
@@ -86,9 +86,7 @@ export default function AskAI({ datasetId, messages, setMessages }: Props) {
                   ? "bg-indigo-600 text-white rounded-br-sm"
                   : "bg-gray-800 text-gray-100 border border-gray-700 rounded-bl-sm"
               }`}>
-                {msg.role === "assistant" && (
-                  <p className="text-xs text-indigo-400 font-medium mb-1">AI Analyst</p>
-                )}
+                {msg.role === "assistant" && <p className="text-xs text-indigo-400 font-medium mb-1">AI Analyst</p>}
                 {msg.content}
               </div>
             </div>
@@ -110,7 +108,6 @@ export default function AskAI({ datasetId, messages, setMessages }: Props) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
       <div className="flex gap-2 bg-gray-900 border border-gray-700 rounded-2xl p-2">
         <input
           type="text"

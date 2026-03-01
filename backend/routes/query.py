@@ -13,7 +13,7 @@ class QueryRequest(BaseModel):
     question: str
     history: list = []
 
-@router.post("/query")
+@router.post("/")
 def query_data(req: QueryRequest):
     print("=== QUERY RECEIVED ===")
     print("dataset_id:", req.dataset_id)

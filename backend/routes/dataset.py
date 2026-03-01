@@ -3,7 +3,7 @@ from services.data_processor import load_dataset, get_dataset_info
 
 router = APIRouter()
 
-@router.get("/dataset/{dataset_id}")
+@router.get("/{dataset_id}")
 def get_dataset(dataset_id: str):
     df = load_dataset(dataset_id)
     if df is None:

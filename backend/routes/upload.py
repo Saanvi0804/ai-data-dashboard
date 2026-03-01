@@ -8,7 +8,7 @@ import uuid
 router = APIRouter()
 
 
-@router.post("/upload")
+@router.post("/")
 async def upload_csv(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),

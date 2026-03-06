@@ -33,7 +33,6 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState("overview");
   const [messages, setMessages] = useState<Message[]>([]);
 
-  // Safely load existing data on mount
   useEffect(() => {
     const saved = localStorage.getItem("current_dataset");
     if (saved) {
@@ -49,7 +48,7 @@ export default function Home() {
     setDataset(data);
     localStorage.setItem("current_dataset", JSON.stringify(data));
     setActiveTab("overview");
-    setMessages([]); // Clear chat for new file
+    setMessages([]);
   };
 
   if (!token) return <AuthForm />;
@@ -58,7 +57,7 @@ export default function Home() {
     <main className="min-h-screen bg-[#030712] text-white p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold tracking-tight">AI Data Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-white">AI Data Dashboard</h1>
           <button onClick={logout} className="px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-sm hover:bg-gray-800 transition">
             Logout
           </button>
@@ -68,7 +67,6 @@ export default function Home() {
           <UploadZone onUpload={handleNewUpload} />
         ) : (
           <div className="space-y-6">
-            {/* Header with Global Stats */}
             <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 flex flex-wrap items-center justify-between gap-6">
               <div className="space-y-1">
                 <p className="text-xs text-gray-500 uppercase tracking-wider">Loaded file</p>
@@ -86,12 +84,12 @@ export default function Home() {
               </div>
               <div className="flex gap-3">
                 <ExportReport 
-                    datasetId={dataset.id} 
-                    filename={dataset.filename} 
-                    rows={dataset.rows} 
-                    columns={dataset.columns} 
-                    columnTypes={dataset.column_types} 
-                    messages={messages} 
+                  datasetId={dataset.id} 
+                  filename={dataset.filename} 
+                  rows={dataset.rows} 
+                  columns={dataset.columns} 
+                  columnTypes={dataset.column_types} 
+                  messages={messages} 
                 />
                 <button onClick={() => { localStorage.removeItem("current_dataset"); setDataset(null); }} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-sm font-medium hover:bg-gray-700 transition">
                   Upload new file
@@ -99,7 +97,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Navigation Tabs */}
             <div className="flex p-1 bg-gray-900 border border-gray-800 rounded-xl w-fit">
               {["overview", "charts", "builder", "ask"].map((tab) => (
                 <button
@@ -114,7 +111,6 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Content Logic with strict null checks to prevent crashes */}
             {activeTab === "overview" && dataset && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <StatsBar dataset={dataset} />

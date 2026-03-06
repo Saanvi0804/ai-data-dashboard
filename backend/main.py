@@ -12,12 +12,12 @@ import os
 
 app = FastAPI(title="AI Dashboard API")
 
+# Update this list to match your EXACT Render Frontend URL
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://ai-data-dashboard-1.onrender.com",
         "http://localhost:3000",
-        "http://localhost:5173"
     ],
     allow_credentials=True,
     allow_methods=["*"],

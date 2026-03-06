@@ -37,7 +37,8 @@ export default function Home() {
     const saved = localStorage.getItem("current_dataset");
     if (saved) {
       try {
-        setDataset(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.id) setDataset(parsed);
       } catch (e) {
         localStorage.removeItem("current_dataset");
       }
@@ -57,7 +58,7 @@ export default function Home() {
     <main className="min-h-screen bg-[#030712] text-white p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold tracking-tight text-white">AI Data Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight">AI Data Dashboard</h1>
           <button onClick={logout} className="px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-sm hover:bg-gray-800 transition">
             Logout
           </button>

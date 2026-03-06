@@ -23,6 +23,7 @@ export default function ChartBuilder({ datasetId, columns, columnTypes }: Props)
   const [chartType, setChartType] = useState("bar");
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [generated, setGenerated] = useState(false);
 
   useEffect(() => {
@@ -35,12 +36,13 @@ export default function ChartBuilder({ datasetId, columns, columnTypes }: Props)
 
   const generate = async () => {
     if (!token) return;
+    setError("");
     setLoading(true);
     try {
       const res = await axios.post(`${API}/api/custom-chart`, {
         dataset_id: datasetId,
         x: xCol,
-        y: yCol,
+        y: chartType === "histogram" ? null : yCol,
         chart_type: chartType,
         aggregation: "sum",
       }, {
@@ -48,8 +50,8 @@ export default function ChartBuilder({ datasetId, columns, columnTypes }: Props)
       });
       setChartData(res.data?.data ?? []);
       setGenerated(true);
-    } catch {
-      setGenerated(false);
+    } catch (e: any) {
+      setError(e?.response?.data?.detail || "Failed to generate chart.");
     } finally {
       setLoading(false);
     }
@@ -57,42 +59,55 @@ export default function ChartBuilder({ datasetId, columns, columnTypes }: Props)
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <select value={chartType} onChange={(e) => setChartType(e.target.value)} className="bg-gray-800 p-2 rounded-lg text-sm">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <select value={chartType} onChange={(e) => setChartType(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg p-2 text-sm text-white">
           <option value="bar">Bar Chart</option>
           <option value="line">Line Chart</option>
+          <option value="pie">Pie Chart</option>
         </select>
-        <select value={xCol} onChange={(e) => setXCol(e.target.value)} className="bg-gray-800 p-2 rounded-lg text-sm">
+        <select value={xCol} onChange={(e) => setXCol(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg p-2 text-sm text-white">
           {columns?.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
-        <select value={yCol} onChange={(e) => setYCol(e.target.value)} className="bg-gray-800 p-2 rounded-lg text-sm">
+        <select value={yCol} onChange={(e) => setYCol(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg p-2 text-sm text-white">
           {columns?.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
       </div>
 
-      <button onClick={generate} className="bg-indigo-600 px-6 py-2 rounded-xl text-sm">{loading ? "..." : "Generate"}</button>
+      <button 
+        onClick={generate} 
+        disabled={loading}
+        className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 py-2.5 rounded-xl font-medium transition"
+      >
+        {loading ? "Generating..." : "Generate Chart"}
+      </button>
 
-      {generated && chartData.length > 0 && (
-        <div className="h-[400px] mt-8 bg-black/20 p-4 rounded-xl">
-          <ResponsiveContainer width="100%" height="100%">
-            {chartType === "bar" ? (
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="label" stroke="#9ca3af" fontSize={12} />
-                <YAxis stroke="#9ca3af" fontSize={12} />
-                <Tooltip contentStyle={{backgroundColor: '#111827'}} />
-                <Bar dataKey="value" fill="#6366f1" />
-              </BarChart>
-            ) : (
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="label" stroke="#9ca3af" fontSize={12} />
-                <YAxis stroke="#9ca3af" fontSize={12} />
-                <Tooltip contentStyle={{backgroundColor: '#111827'}} />
-                <Line type="monotone" dataKey="value" stroke="#6366f1" />
-              </LineChart>
-            )}
-          </ResponsiveContainer>
+      {error && <p className="text-red-400 text-sm">{error}</p>}
+
+      {generated && (
+        <div className="h-[400px] mt-8 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+           {chartData.length > 0 ? (
+             <ResponsiveContainer width="100%" height="100%">
+                {chartType === "bar" ? (
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                    <XAxis dataKey="label" tick={{fill: '#9ca3af', fontSize: 11}} />
+                    <YAxis tick={{fill: '#9ca3af', fontSize: 11}} />
+                    <Tooltip contentStyle={{backgroundColor: '#111827', border: '1px solid #374151'}} />
+                    <Bar dataKey="value" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                ) : (
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                    <XAxis dataKey="label" tick={{fill: '#9ca3af', fontSize: 11}} />
+                    <YAxis tick={{fill: '#9ca3af', fontSize: 11}} />
+                    <Tooltip contentStyle={{backgroundColor: '#111827', border: '1px solid #374151'}} />
+                    <Line type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={2} dot={false} />
+                  </LineChart>
+                )}
+             </ResponsiveContainer>
+           ) : (
+             <div className="flex items-center justify-center h-full text-gray-500">No data for selected columns</div>
+           )}
         </div>
       )}
     </div>

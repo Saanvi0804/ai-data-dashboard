@@ -1,7 +1,9 @@
 "use client";
+
 import { useState } from "react";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
+
 const API = "https://ai-data-dashboard.onrender.com";
 
 interface Message {
@@ -19,21 +21,28 @@ interface Props {
 }
 
 export default function ExportReport({ datasetId, filename, rows, columns, columnTypes, messages }: Props) {
+  const { token } = useAuth(); // Fix 1: Added token to authorize the AI summary request
   const [loading, setLoading] = useState(false);
 
   const generateReport = async () => {
+    if (!token) {
+      alert("Please log in again to export reports.");
+      return;
+    }
+    
     setLoading(true);
     try {
-      // Ask AI for a summary
+      // Fix 2: Added Authorization header to the axios call
       const res = await axios.post(`${API}/api/query`, {
         dataset_id: datasetId,
         question: "Give me a comprehensive analysis of this dataset. Include: 1) What this dataset is about, 2) Key statistics and patterns, 3) Notable findings, 4) Any recommendations. Be thorough but concise.",
         history: [],
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
 
       const summary = res.data.answer;
       const numericCols = columns.filter(c => columnTypes[c] === "numeric");
-      const categoricalCols = columns.filter(c => columnTypes[c] === "categorical");
 
       // Build HTML report
       const html = `
@@ -43,97 +52,69 @@ export default function ExportReport({ datasetId, filename, rows, columns, colum
   <meta charset="utf-8">
   <title>Data Analysis Report - ${filename}</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; color: #1f2937; padding: 40px; max-width: 900px; margin: 0 auto; }
-    h1 { font-size: 28px; color: #111827; border-bottom: 3px solid #6366f1; padding-bottom: 12px; margin-bottom: 8px; }
-    .meta { color: #6b7280; font-size: 14px; margin-bottom: 32px; }
-    h2 { font-size: 18px; color: #374151; margin: 28px 0 12px; padding-left: 12px; border-left: 4px solid #6366f1; }
-    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
-    .stat-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; text-align: center; }
-    .stat-value { font-size: 28px; font-weight: 700; color: #6366f1; }
-    .stat-label { font-size: 12px; color: #9ca3af; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
-    .columns-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 24px; }
-    .col-badge { background: #f3f4f6; border-radius: 8px; padding: 8px 12px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
-    .col-type { font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 500; }
-    .numeric { background: #dbeafe; color: #1d4ed8; }
-    .categorical { background: #dcfce7; color: #15803d; }
-    .datetime { background: #fef9c3; color: #a16207; }
-    .summary { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px; line-height: 1.7; font-size: 14px; white-space: pre-wrap; }
-    .chat-section { margin-top: 8px; }
-    .message { margin-bottom: 12px; padding: 12px 16px; border-radius: 10px; font-size: 14px; line-height: 1.6; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 40px; color: #1f2937; max-width: 850px; margin: 0 auto; }
+    h1 { color: #111827; border-bottom: 3px solid #6366f1; padding-bottom: 10px; }
+    .meta { color: #6b7280; font-size: 14px; margin-bottom: 30px; }
+    h2 { font-size: 18px; margin: 25px 0 10px; border-left: 4px solid #6366f1; padding-left: 10px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; }
+    .stat-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; text-align: center; }
+    .stat-value { font-size: 24px; font-weight: bold; color: #6366f1; }
+    .summary { background: #f9fafb; border: 1px solid #e5e7eb; padding: 20px; border-radius: 8px; line-height: 1.6; white-space: pre-wrap; }
+    .message { margin-bottom: 10px; padding: 10px; border-radius: 8px; font-size: 14px; }
     .user-msg { background: #eef2ff; border-left: 4px solid #6366f1; }
-    .assistant-msg { background: #f9fafb; border-left: 4px solid #10b981; }
-    .msg-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
-    .user-label { color: #6366f1; }
-    .assistant-label { color: #10b981; }
+    .assistant-msg { background: #f0fdf4; border-left: 4px solid #10b981; }
     footer { margin-top: 40px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 20px; }
+    @media print { .no-print { display: none; } }
   </style>
 </head>
 <body>
   <h1>📊 Data Analysis Report</h1>
-  <div class="meta">
-    File: <strong>${filename}</strong> &nbsp;·&nbsp;
-    Generated: <strong>${new Date().toLocaleString()}</strong>
-  </div>
+  <div class="meta">File: <strong>${filename}</strong> &nbsp;·&nbsp; Generated: ${new Date().toLocaleString()}</div>
 
   <h2>Dataset Overview</h2>
   <div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-value">${rows.toLocaleString()}</div>
-      <div class="stat-label">Total Rows</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value">${columns.length}</div>
-      <div class="stat-label">Columns</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value">${numericCols.length}</div>
-      <div class="stat-label">Numeric Columns</div>
-    </div>
-  </div>
-
-  <h2>Columns</h2>
-  <div class="columns-grid">
-    ${columns.map(col => `
-      <div class="col-badge">
-        <span>${col}</span>
-        <span class="col-type ${columnTypes[col]}">${columnTypes[col]}</span>
-      </div>
-    `).join("")}
+    <div class="stat-card"><div class="stat-value">${rows.toLocaleString()}</div><div>Rows</div></div>
+    <div class="stat-card"><div class="stat-value">${columns.length}</div><div>Columns</div></div>
+    <div class="stat-card"><div class="stat-value">${numericCols.length}</div><div>Numeric</div></div>
   </div>
 
   <h2>AI Analysis Summary</h2>
   <div class="summary">${summary}</div>
 
   ${messages.length > 0 ? `
-  <h2>Chat History</h2>
-  <div class="chat-section">
+    <h2>Recent Chat Context</h2>
     ${messages.map(m => `
       <div class="message ${m.role === "user" ? "user-msg" : "assistant-msg"}">
-        <div class="msg-label ${m.role === "user" ? "user-label" : "assistant-label"}">
-          ${m.role === "user" ? "You" : "AI Analyst"}
-        </div>
-        ${m.content}
+        <strong>${m.role === "user" ? "You" : "AI Analyst"}:</strong><br/>${m.content}
       </div>
     `).join("")}
-  </div>
   ` : ""}
 
-  <footer>Generated by AI Data Dashboard · Data is private and auto-deleted after 24 hours</footer>
+  <footer>Generated by AI Data Dashboard</footer>
 </body>
 </html>`;
 
-      // Open in new tab and trigger print
-      const win = window.open("", "_blank");
+      // Fix 3: Handle browser pop-up blockers by creating a Blob instead of window.open("")
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, "_blank");
+      
       if (win) {
-        win.document.write(html);
-        win.document.close();
-        setTimeout(() => win.print(), 500);
+        win.focus();
+        // Trigger print after the content is rendered
+        win.onload = () => {
+          setTimeout(() => {
+            win.print();
+            URL.revokeObjectURL(url);
+          }, 500);
+        };
+      } else {
+        alert("Pop-up blocked! Please allow pop-ups for this site to view the report.");
       }
 
     } catch (e) {
-      console.error(e);
-      alert("Failed to generate report. Please try again.");
+      console.error("Report Error:", e);
+      alert("AI took too long to analyze. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -148,12 +129,10 @@ export default function ExportReport({ datasetId, filename, rows, columns, colum
       {loading ? (
         <>
           <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-          Generating...
+          Generating Analysis...
         </>
       ) : (
-        <>
-          📄 Export Report
-        </>
+        <>📄 Export Report</>
       )}
     </button>
   );

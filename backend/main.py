@@ -15,11 +15,13 @@ app = FastAPI(title="AI Dashboard API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://ai-data-dashboard-1.onrender.com"
+        "https://ai-data-dashboard-1.onrender.com",
+        "http://localhost:3000",
+        "http://localhost:5173"
     ],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*"]
 )
 
 app.include_router(auth.router, prefix="/api/auth")
@@ -30,9 +32,7 @@ app.include_router(query.router, prefix="/api/query")
 app.include_router(suggest_charts.router, prefix="/api")
 app.include_router(custom_chart.router, prefix="/api")
 
-
 def cleanup_old_datasets():
-    print("Running cleanup job...")
     db = SessionLocal()
     try:
         cutoff = datetime.utcnow() - timedelta(hours=24)
@@ -44,14 +44,12 @@ def cleanup_old_datasets():
     finally:
         db.close()
 
-
 @app.on_event("startup")
 def startup():
     create_tables()
     scheduler = BackgroundScheduler()
     scheduler.add_job(cleanup_old_datasets, "interval", hours=1)
     scheduler.start()
-
 
 @app.get("/")
 def root():

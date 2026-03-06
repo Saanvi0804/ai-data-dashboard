@@ -1,8 +1,7 @@
 "use client";
-
 import { useState } from "react";
 import axios from "axios";
-
+import { useAuth } from "@/context/AuthContext";
 const API = "https://ai-data-dashboard.onrender.com";
 
 interface Message {

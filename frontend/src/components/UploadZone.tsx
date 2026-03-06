@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import axios from "axios";
 import { DatasetInfo } from "@/app/page";
+import { useAuth } from "@/context/AuthContext";
 
 const API = "https://ai-data-dashboard.onrender.com";
 
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function UploadZone({ onUpload }: Props) {
+  const { token } = useAuth();
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,15 +25,21 @@ export default function UploadZone({ onUpload }: Props) {
     }
     setError(null);
     setLoading(true);
+
     const formData = new FormData();
     formData.append("file", file);
+
     try {
       const res = await axios.post(`${API}/api/upload`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: { 
+          "Content-Type": "multipart/form-data",
+          "Authorization": `Bearer ${token}` 
+        },
       });
       onUpload({ ...res.data, filename: file.name });
     } catch (err: any) {
-      setError(err?.response?.data?.detail || "Upload failed. Is the backend running?");
+      const detail = err?.response?.data?.detail;
+      setError(detail === "Not authenticated" ? "Session expired. Please log in again." : (detail || "Upload failed."));
     } finally {
       setLoading(false);
     }
@@ -73,7 +81,6 @@ export default function UploadZone({ onUpload }: Props) {
       {error && (
         <p className="mt-4 text-red-400 text-sm bg-red-950/30 border border-red-800 px-4 py-2 rounded-lg">{error}</p>
       )}
-      <p className="mt-6 text-xs text-gray-600">Supported format: .csv — Any size dataset works</p>
     </div>
   );
 }

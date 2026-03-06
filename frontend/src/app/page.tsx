@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
 import UploadZone from "@/components/UploadZone";
 import DataTable from "@/components/DataTable";
 import StatsBar from "@/components/StatsBar";
@@ -8,6 +9,7 @@ import SmartCharts from "@/components/SmartCharts";
 import ChartBuilder from "@/components/ChartBuilder";
 import AskAI from "@/components/AskAI";
 import ExportReport from "@/components/ExportReport";
+import AuthForm from "@/components/AuthForm"; // Make sure to create this component
 
 export interface DatasetInfo {
   dataset_id: string;
@@ -26,6 +28,7 @@ export interface Message {
 type Tab = "overview" | "charts" | "build" | "ask";
 
 export default function Home() {
+  const { token, logout } = useAuth();
   const [dataset, setDataset] = useState<DatasetInfo | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -59,6 +62,19 @@ export default function Home() {
     localStorage.setItem("ai_dashboard_tab", activeTab);
   }, [activeTab, hydrated]);
 
+  if (!hydrated) return null;
+
+  // Show AuthForm if not logged in
+  if (!token) {
+    return (
+      <main className="max-w-7xl mx-auto px-6 py-20 flex flex-col items-center justify-center min-h-screen">
+        <h1 className="text-4xl font-bold text-white mb-4">AI Data Dashboard</h1>
+        <p className="text-gray-400 mb-10">Sign in to start analyzing your data.</p>
+        <AuthForm />
+      </main>
+    );
+  }
+
   const handleNewUpload = (data: DatasetInfo) => {
     setDataset(data);
     setMessages([]);
@@ -71,10 +87,7 @@ export default function Home() {
     setActiveTab("overview");
     localStorage.removeItem("ai_dashboard_dataset");
     localStorage.removeItem("ai_dashboard_messages");
-    localStorage.removeItem("ai_dashboard_tab");
   };
-
-  if (!hydrated) return null;
 
   const tabs: { id: Tab; label: string; emoji: string }[] = [
     { id: "overview", label: "Overview",      emoji: "📋" },
@@ -85,16 +98,23 @@ export default function Home() {
 
   return (
     <main className="max-w-7xl mx-auto px-6 py-10">
-      <div className="mb-10">
-        <h1 className="text-4xl font-bold text-white">AI Data Dashboard</h1>
-        <p className="text-gray-400 mt-2">Upload any CSV file to explore and analyze your data with AI.</p>
+      <div className="flex justify-between items-start mb-10">
+        <div>
+          <h1 className="text-4xl font-bold text-white">AI Data Dashboard</h1>
+          <p className="text-gray-400 mt-2">Upload any CSV file to explore and analyze your data with AI.</p>
+        </div>
+        <button 
+          onClick={logout}
+          className="text-gray-400 hover:text-white text-sm bg-gray-900 border border-gray-800 px-4 py-2 rounded-lg transition"
+        >
+          Logout
+        </button>
       </div>
 
       {!dataset ? (
         <UploadZone onUpload={handleNewUpload} />
       ) : (
         <div className="space-y-6">
-          {/* File info bar */}
           <div className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-xl px-5 py-4">
             <div>
               <p className="text-sm text-gray-400">Loaded file</p>
@@ -128,7 +148,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Tabs */}
           <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1 w-fit">
             {tabs.map((tab) => (
               <button

@@ -7,16 +7,13 @@ import uuid
 
 router = APIRouter()
 
-
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
 
-
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
-
 
 @router.post("/register")
 def register(req: RegisterRequest, db: Session = Depends(get_db)):
@@ -38,7 +35,6 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     token = create_token(user.id)
     return {"token": token, "email": user.email}
 
-
 @router.post("/login")
 def login(req: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == req.email).first()
@@ -46,11 +42,14 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid email or password.")
 
     token = create_token(user.id)
-    return {"token": token, "email": user.email}
-
+    # Ensure the token is being returned correctly for the frontend to store
+    return {"token": token, "email": user.email, "token_type": "bearer"}
 
 @router.get("/me")
 def me(user_id: str = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not user_id:
+         raise HTTPException(status_code=401, detail="Token invalid or expired.")
+         
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")

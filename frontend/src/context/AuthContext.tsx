@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
+// Update this to your final Render URL before pushing
 const API = "https://ai-data-dashboard.onrender.com";
 
 interface AuthContextType {

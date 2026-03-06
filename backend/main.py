@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 from database import create_tables, SessionLocal, Dataset
-from routes import upload, dataset, stats, query, auth
+from routes import upload, dataset, stats, query, auth, suggest_charts, custom_chart
 from services.data_processor import delete_dataset
 from datetime import datetime, timedelta
 import os
@@ -27,6 +27,8 @@ app.include_router(upload.router, prefix="/api/upload")
 app.include_router(dataset.router, prefix="/api/dataset")
 app.include_router(stats.router, prefix="/api/stats")
 app.include_router(query.router, prefix="/api/query")
+app.include_router(suggest_charts.router, prefix="/api")
+app.include_router(custom_chart.router, prefix="/api")
 
 
 def cleanup_old_datasets():

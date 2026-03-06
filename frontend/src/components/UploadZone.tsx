@@ -8,10 +8,9 @@ const API = "https://ai-data-dashboard.onrender.com";
 
 interface Props {
   onUpload: (data: DatasetInfo) => void;
-  token: string;
 }
 
-export default function UploadZone({ onUpload, token }: Props) {
+export default function UploadZone({ onUpload }: Props) {
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,23 +21,17 @@ export default function UploadZone({ onUpload, token }: Props) {
       setError("Please upload a .csv file.");
       return;
     }
-
     setError(null);
     setLoading(true);
-
     const formData = new FormData();
     formData.append("file", file);
-
     try {
       const res = await axios.post(`${API}/api/upload`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
       onUpload({ ...res.data, filename: file.name });
     } catch (err: any) {
-      setError(err?.response?.data?.detail || "Upload failed. Please try again.");
+      setError(err?.response?.data?.detail || "Upload failed. Is the backend running?");
     } finally {
       setLoading(false);
     }
@@ -62,13 +55,8 @@ export default function UploadZone({ onUpload, token }: Props) {
           dragging ? "border-indigo-500 bg-indigo-950/30" : "border-gray-700 hover:border-gray-500 bg-gray-900/50"
         }`}
       >
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".csv"
-          className="hidden"
-          onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
-        />
+        <input ref={inputRef} type="file" accept=".csv" className="hidden"
+          onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
         {loading ? (
           <div className="space-y-3">
             <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -82,13 +70,10 @@ export default function UploadZone({ onUpload, token }: Props) {
           </div>
         )}
       </div>
-
       {error && (
-        <p className="mt-4 text-red-400 text-sm bg-red-950/30 border border-red-800 px-4 py-2 rounded-lg">
-          {error}
-        </p>
+        <p className="mt-4 text-red-400 text-sm bg-red-950/30 border border-red-800 px-4 py-2 rounded-lg">{error}</p>
       )}
-      <p className="mt-6 text-xs text-gray-600">Files are automatically deleted after 24 hours</p>
+      <p className="mt-6 text-xs text-gray-600">Supported format: .csv — Any size dataset works</p>
     </div>
   );
 }

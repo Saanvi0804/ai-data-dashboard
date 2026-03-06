@@ -10,18 +10,17 @@ interface Props {
   datasetId: string;
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
-  token: string;
 }
 
 const SUGGESTED_QUESTIONS = [
-  "Which product had the highest total revenue?",
-  "What is the average revenue per transaction?",
-  "Which region performed the best?",
-  "What is the best selling category?",
-  "What is the total revenue across all transactions?",
+  "What are the most important patterns in this dataset?",
+  "Which columns have the highest values?",
+  "Give me a summary of this dataset.",
+  "What correlations exist between columns?",
+  "What are the top 5 rows by the most important metric?",
 ];
 
-export default function AskAI({ datasetId, messages, setMessages, token }: Props) {
+export default function AskAI({ datasetId, messages, setMessages }: Props) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -32,19 +31,17 @@ export default function AskAI({ datasetId, messages, setMessages, token }: Props
 
   const sendMessage = async (question: string) => {
     if (!question.trim() || isLoading) return;
-
     const userMsg: Message = { role: "user", content: question };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
     setInput("");
     setIsLoading(true);
-
     try {
-      const res = await axios.post(
-        `${API}/api/query`,
-        { dataset_id: datasetId, question, history: messages },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await axios.post(`${API}/api/query`, {
+        dataset_id: datasetId,
+        question,
+        history: messages,
+      });
       setMessages([...newMessages, { role: "assistant", content: res.data.answer }]);
     } catch {
       setMessages([...newMessages, { role: "assistant", content: "Sorry, something went wrong. Please try again." }]);
@@ -67,11 +64,8 @@ export default function AskAI({ datasetId, messages, setMessages, token }: Props
               <p className="text-xs text-gray-500 uppercase tracking-wider">Suggested questions</p>
               <div className="grid grid-cols-1 gap-2">
                 {SUGGESTED_QUESTIONS.map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => sendMessage(q)}
-                    className="text-left text-sm text-gray-300 bg-gray-800/60 hover:bg-gray-700/60 border border-gray-700 hover:border-gray-500 rounded-xl px-4 py-3 transition"
-                  >
+                  <button key={q} onClick={() => sendMessage(q)}
+                    className="text-left text-sm text-gray-300 bg-gray-800/60 hover:bg-gray-700/60 border border-gray-700 hover:border-gray-500 rounded-xl px-4 py-3 transition">
                     {q}
                   </button>
                 ))}
@@ -92,7 +86,6 @@ export default function AskAI({ datasetId, messages, setMessages, token }: Props
             </div>
           ))
         )}
-
         {isLoading && (
           <div className="flex justify-start">
             <div className="bg-gray-800 border border-gray-700 rounded-2xl rounded-bl-sm px-4 py-3">
@@ -107,22 +100,14 @@ export default function AskAI({ datasetId, messages, setMessages, token }: Props
         )}
         <div ref={bottomRef} />
       </div>
-
       <div className="flex gap-2 bg-gray-900 border border-gray-700 rounded-2xl p-2">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
+        <input type="text" value={input} onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage(input)}
           placeholder="Ask a question about your data..."
           className="flex-1 bg-transparent text-white text-sm px-3 py-2 outline-none placeholder-gray-500"
-          disabled={isLoading}
-        />
-        <button
-          onClick={() => sendMessage(input)}
-          disabled={!input.trim() || isLoading}
-          className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-medium px-5 py-2 rounded-xl transition"
-        >
+          disabled={isLoading} />
+        <button onClick={() => sendMessage(input)} disabled={!input.trim() || isLoading}
+          className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-medium px-5 py-2 rounded-xl transition">
           Ask
         </button>
       </div>

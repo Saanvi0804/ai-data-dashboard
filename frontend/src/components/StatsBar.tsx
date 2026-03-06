@@ -13,6 +13,9 @@ const TYPE_STYLES: Record<string, { bg: string; text: string; label: string }> =
 };
 
 export default function StatsBar({ dataset }: Props) {
+  // Add safety check: if dataset or its properties are missing, return null
+  if (!dataset || !dataset.columns || !dataset.column_types) return null;
+
   const { columns, column_types } = dataset;
 
   const counts = {
@@ -23,7 +26,6 @@ export default function StatsBar({ dataset }: Props) {
 
   return (
     <div className="space-y-3">
-      {/* Type summary */}
       <div className="flex gap-3">
         {Object.entries(counts).map(([type, count]) => {
           if (count === 0) return null;
@@ -37,9 +39,9 @@ export default function StatsBar({ dataset }: Props) {
         })}
       </div>
 
-      {/* Column tags */}
       <div className="flex flex-wrap gap-2">
         {columns.map((col) => {
+          // Default to categorical if the type is undefined to prevent crashes
           const type = column_types[col] || "categorical";
           const style = TYPE_STYLES[type];
           return (

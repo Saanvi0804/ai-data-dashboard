@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import axios from "axios";
+import { useAuth } from "@/context/AuthContext"; // Fix: Import useAuth
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
@@ -32,6 +33,7 @@ const AGGREGATIONS = [
 ];
 
 export default function ChartBuilder({ datasetId, columns, columnTypes }: Props) {
+  const { token } = useAuth(); // Fix: Get security token
   const [xCol, setXCol] = useState(columns[0] || "");
   const [yCol, setYCol] = useState(columns.find(c => columnTypes[c] === "numeric") || "");
   const [chartType, setChartType] = useState("bar");
@@ -53,11 +55,18 @@ export default function ChartBuilder({ datasetId, columns, columnTypes }: Props)
         y: needsY ? yCol : null,
         chart_type: chartType,
         aggregation: chartType === "scatter" ? "none" : aggregation,
+      }, {
+        headers: { Authorization: `Bearer ${token}` } // Fix: Send Auth header
       });
-      setChartData(res.data.data);
+      
+      // Fix: Add null-safety to response data
+      setChartData(res.data?.data ?? []);
       setGenerated(true);
     } catch (e: any) {
-      setError(e?.response?.data?.detail || "Failed to generate chart.");
+      const msg = e?.response?.status === 401 
+        ? "Session expired. Please log in again." 
+        : (e?.response?.data?.detail || "Failed to generate chart.");
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -73,7 +82,6 @@ export default function ChartBuilder({ datasetId, columns, columnTypes }: Props)
         <p className="text-gray-400 text-sm">Pick any columns and chart type to visualize your data.</p>
       </div>
 
-      {/* Controls */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div>
           <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1.5">Chart Type</label>
@@ -148,8 +156,7 @@ export default function ChartBuilder({ datasetId, columns, columnTypes }: Props)
         <p className="text-red-400 text-sm bg-red-950/30 border border-red-800 px-4 py-2 rounded-lg">{error}</p>
       )}
 
-      {/* Chart output */}
-      {generated && chartData.length > 0 && (
+      {generated && chartData?.length > 0 && (
         <div className="pt-2">
           <ResponsiveContainer width="100%" height={280}>
             {chartType === "bar" || chartType === "histogram" ? (
@@ -171,7 +178,7 @@ export default function ChartBuilder({ datasetId, columns, columnTypes }: Props)
             ) : chartType === "pie" ? (
               <PieChart>
                 <Pie data={chartData} dataKey="value" nameKey="label" cx="50%" cy="50%" outerRadius={100}
-                  label={(props) => `${props.name} ${((props.percent ?? 0) * 100).toFixed(0)}%`} labelLine={false}>
+                  label={(props) => `${props.name ?? ''} ${((props.percent ?? 0) * 100).toFixed(0)}%`} labelLine={false}>
                   {chartData.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
                 <Tooltip contentStyle={tooltipStyle} />

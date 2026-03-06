@@ -12,12 +12,21 @@ interface ColumnStat {
 }
 
 interface Props {
-  stats: Record<string, ColumnStat>;
+  stats?: Record<string, ColumnStat>; // Made stats optional
 }
 
 export default function StatsCards({ stats }: Props) {
-  const numericCols = Object.entries(stats).filter(([, s]) => s.type === "numeric");
-  const categoricalCols = Object.entries(stats).filter(([, s]) => s.type === "categorical");
+  // 1. Critical Safety Check: If stats is undefined, show a loading/empty state
+  if (!stats) {
+    return (
+      <div className="text-center py-10 text-gray-500 text-sm italic">
+        Loading column statistics...
+      </div>
+    );
+  }
+
+  const numericCols = Object.entries(stats).filter(([, s]) => s?.type === "numeric");
+  const categoricalCols = Object.entries(stats).filter(([, s]) => s?.type === "categorical");
 
   return (
     <div className="space-y-6">
@@ -34,19 +43,19 @@ export default function StatsCards({ stats }: Props) {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-gray-800/60 rounded-lg p-2 text-center">
                     <p className="text-xs text-gray-500">Mean</p>
-                    <p className="text-sm font-bold text-blue-300">{s.mean?.toLocaleString()}</p>
+                    <p className="text-sm font-bold text-blue-300">{s.mean?.toLocaleString() ?? "0"}</p>
                   </div>
                   <div className="bg-gray-800/60 rounded-lg p-2 text-center">
                     <p className="text-xs text-gray-500">Sum</p>
-                    <p className="text-sm font-bold text-indigo-300">{s.sum?.toLocaleString()}</p>
+                    <p className="text-sm font-bold text-indigo-300">{s.sum?.toLocaleString() ?? "0"}</p>
                   </div>
                   <div className="bg-gray-800/60 rounded-lg p-2 text-center">
                     <p className="text-xs text-gray-500">Min</p>
-                    <p className="text-sm font-bold text-green-300">{s.min?.toLocaleString()}</p>
+                    <p className="text-sm font-bold text-green-300">{s.min?.toLocaleString() ?? "0"}</p>
                   </div>
                   <div className="bg-gray-800/60 rounded-lg p-2 text-center">
                     <p className="text-xs text-gray-500">Max</p>
-                    <p className="text-sm font-bold text-orange-300">{s.max?.toLocaleString()}</p>
+                    <p className="text-sm font-bold text-orange-300">{s.max?.toLocaleString() ?? "0"}</p>
                   </div>
                 </div>
                 {s.null_count > 0 && (
@@ -70,7 +79,7 @@ export default function StatsCards({ stats }: Props) {
                 <div className="flex justify-between items-start">
                   <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{col}</p>
                   <span className="text-xs text-purple-400 bg-purple-950/40 px-2 py-0.5 rounded-full">
-                    {s.unique_count} unique
+                    {s.unique_count ?? 0} unique
                   </span>
                 </div>
                 <div className="space-y-1.5">

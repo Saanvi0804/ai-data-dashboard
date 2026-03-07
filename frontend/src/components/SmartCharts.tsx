@@ -42,13 +42,16 @@ export default function SmartCharts({ datasetId }: Props) {
   const [charts, setCharts] = useState<ChartSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [loaded, setLoaded] = useState(false);
+
+  const [prompt, setPrompt] = useState("");
+  const [promptLoading, setPromptLoading] = useState(false);
 
   useEffect(() => {
 
-    if (!datasetId || !token) return;
+    if (!datasetId || !token || loaded) return;
 
     setLoading(true);
-    setError("");
 
     axios.post(
       `${API}/api/suggest-charts`,
@@ -57,6 +60,7 @@ export default function SmartCharts({ datasetId }: Props) {
     )
     .then((res) => {
       setCharts(res.data?.charts ?? []);
+      setLoaded(true);
     })
     .catch((err) => {
       const msg =
@@ -67,7 +71,42 @@ export default function SmartCharts({ datasetId }: Props) {
     })
     .finally(() => setLoading(false));
 
-  }, [datasetId, token]);
+  }, [datasetId, token, loaded]);
+
+
+
+  const generateChartFromPrompt = async () => {
+
+    if (!prompt.trim()) return;
+
+    setPromptLoading(true);
+
+    try {
+
+      const res = await axios.post(
+        `${API}/api/generate-chart-from-prompt`,
+        {
+          dataset_id: datasetId,
+          prompt: prompt
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data?.chart) {
+        setCharts(prev => [res.data.chart, ...prev]);
+      }
+
+      setPrompt("");
+
+    } catch {
+      alert("AI could not generate a chart from that prompt.");
+    }
+
+    setPromptLoading(false);
+
+  };
+
+
 
   if (loading) {
     return (
@@ -86,6 +125,8 @@ export default function SmartCharts({ datasetId }: Props) {
     );
   }
 
+
+
   const validCharts = charts.filter((chart) => {
 
     if (!chart?.data || chart.data.length === 0) return false;
@@ -98,40 +139,81 @@ export default function SmartCharts({ datasetId }: Props) {
 
   });
 
-  if (validCharts.length === 0) {
-    return (
-      <div className="text-center py-20 text-gray-500">
-        No useful charts could be generated for this dataset.
-      </div>
-    );
-  }
+
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="space-y-8">
 
-      {validCharts.map((chart, i) => (
-        <div key={i} className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+      {/* Prompt Chart Generator */}
 
-          <h3 className="text-white font-semibold mb-1">
-            {chart.title}
-          </h3>
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
 
-          <p className="text-gray-500 text-xs mb-4">
-            {chart.description}
-          </p>
+        <p className="text-sm text-indigo-400 font-semibold">
+          Generate chart using AI
+        </p>
 
-          <RenderChart chart={chart} colors={COLORS} />
-            {chart.insight && (
-              <div className="mt-4 text-sm text-indigo-300 bg-indigo-950/40 border border-indigo-900 rounded-lg px-3 py-2">
-                <span className="font-semibold">Insight:</span> {chart.insight}
+        <div className="flex gap-3">
+
+          <input
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Example: show average score by subject"
+            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm text-white outline-none"
+          />
+
+          <button
+            onClick={generateChartFromPrompt}
+            disabled={promptLoading}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium transition"
+          >
+            {promptLoading ? "Generating..." : "Generate"}
+          </button>
+
+        </div>
+
+      </div>
+
+
+
+      {/* Charts */}
+
+      {validCharts.length === 0 ? (
+        <div className="text-center py-20 text-gray-500">
+          No useful charts could be generated for this dataset.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+          {validCharts.map((chart, i) => (
+            <div key={i} className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+
+              <h3 className="text-white font-semibold mb-1">
+                {chart.title}
+              </h3>
+
+              <p className="text-gray-500 text-xs mb-4">
+                {chart.description}
+              </p>
+
+              <RenderChart chart={chart} colors={COLORS} />
+
+              {chart.insight && (
+                <div className="mt-4 text-sm text-indigo-300 bg-indigo-950/40 border border-indigo-900 rounded-lg px-3 py-2">
+                  <span className="font-semibold">Insight:</span> {chart.insight}
                 </div>
               )}
+
+            </div>
+          ))}
+
         </div>
-      ))}
+      )}
 
     </div>
   );
 }
+
+
 
 function RenderChart({ chart, colors }: { chart: ChartSuggestion; colors: string[] }) {
 
@@ -139,11 +221,14 @@ function RenderChart({ chart, colors }: { chart: ChartSuggestion; colors: string
   const type = chart?.type;
 
   const axisStyle = { fill: "#9ca3af", fontSize: 11 };
+
   const tooltipStyle = {
     backgroundColor: "#1f2937",
     border: "1px solid #374151",
     borderRadius: 8
   };
+
+
 
   if (type === "bar" || type === "histogram") {
     return (
@@ -159,6 +244,8 @@ function RenderChart({ chart, colors }: { chart: ChartSuggestion; colors: string
     );
   }
 
+
+
   if (type === "line") {
     return (
       <ResponsiveContainer width="100%" height={220}>
@@ -172,6 +259,8 @@ function RenderChart({ chart, colors }: { chart: ChartSuggestion; colors: string
       </ResponsiveContainer>
     );
   }
+
+
 
   if (type === "pie") {
     return (
@@ -195,6 +284,8 @@ function RenderChart({ chart, colors }: { chart: ChartSuggestion; colors: string
       </ResponsiveContainer>
     );
   }
+
+
 
   if (type === "scatter") {
     return (

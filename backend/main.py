@@ -8,6 +8,7 @@ from database import create_tables, SessionLocal, Dataset
 from routes import upload, dataset, stats, query, auth, suggest_charts, custom_chart
 from services.data_processor import delete_dataset
 from datetime import datetime, timedelta
+from routes.generate_chart_from_prompt import router as prompt_chart_router
 import os
 
 app = FastAPI(title="AI Dashboard API")
@@ -31,6 +32,7 @@ app.include_router(stats.router, prefix="/api/stats")
 app.include_router(query.router, prefix="/api/query")
 app.include_router(suggest_charts.router, prefix="/api")
 app.include_router(custom_chart.router, prefix="/api")
+app.include_router(prompt_chart_router, prefix="/api")
 
 def cleanup_old_datasets():
     db = SessionLocal()

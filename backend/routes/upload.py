@@ -54,6 +54,7 @@ async def upload_csv(
             "columns": info["columns"],
             "preview": info["preview"],
             "column_types": info["column_types"],
+            "stats": info["stats"],
             "summary": summary
         }
 

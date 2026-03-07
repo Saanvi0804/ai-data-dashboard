@@ -13,10 +13,9 @@ os.makedirs(STORAGE_DIR, exist_ok=True)
 
 def parse_csv(contents: bytes) -> pd.DataFrame:
     try:
-        # Added handling for different encodings which often crash CSV uploads
-        return pd.read_csv(io.BytesIO(contents), encoding='utf-8')
-    except UnicodeDecodeError:
-        return pd.read_csv(io.BytesIO(contents), encoding='latin1')
+        return pd.read_csv(io.BytesIO(contents))
+    except:
+        return pd.read_csv(io.BytesIO(contents), encoding="latin1")
 
 def save_dataset(dataset_id: str, df: pd.DataFrame):
     path = os.path.join(STORAGE_DIR, f"{dataset_id}.pkl")

@@ -37,7 +37,7 @@ async def upload_csv(
         db.commit()
 
         return {
-            "dataset_id": dataset_id,
+            "id": dataset_id,
             "filename": file.filename,
             "rows": info["rows"],
             "columns": info["columns"],

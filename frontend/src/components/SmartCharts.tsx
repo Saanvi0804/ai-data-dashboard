@@ -23,6 +23,8 @@ const COLORS = [
   "#f97316"
 ];
 
+const CACHE_KEY = (datasetId: string) => `charts_cache_${datasetId}`;
+
 interface ChartSuggestion {
   title: string;
   type: "bar" | "line" | "pie" | "scatter" | "histogram";
@@ -48,11 +50,24 @@ export default function SmartCharts({ datasetId }: Props) {
   const [loading, setLoading] = useState(true);
   const [promptLoading, setPromptLoading] = useState(false);
   const [error, setError] = useState("");
-  const [chartsLoaded, setChartsLoaded] = useState(false);
 
   useEffect(() => {
 
-    if (!datasetId || !token || chartsLoaded) return;
+    if (!datasetId || !token) return;
+
+    const cached = localStorage.getItem(CACHE_KEY(datasetId));
+
+    if (cached) {
+
+      const parsed = JSON.parse(cached);
+
+      setCharts(parsed.charts || []);
+      setCorrelations(parsed.correlations || []);
+      setLoading(false);
+
+      return;
+
+    }
 
     setLoading(true);
 
@@ -73,9 +88,19 @@ export default function SmartCharts({ datasetId }: Props) {
     ])
     .then(([chartsRes, corrRes]) => {
 
-      setCharts(chartsRes.data?.charts ?? []);
-      setCorrelations(corrRes.data?.correlations ?? []);
-      setChartsLoaded(true);
+      const chartsData = chartsRes.data?.charts ?? [];
+      const corrData = corrRes.data?.correlations ?? [];
+
+      setCharts(chartsData);
+      setCorrelations(corrData);
+
+      localStorage.setItem(
+        CACHE_KEY(datasetId),
+        JSON.stringify({
+          charts: chartsData,
+          correlations: corrData
+        })
+      );
 
     })
     .catch(() => setError("Failed to generate charts."))
@@ -103,13 +128,27 @@ export default function SmartCharts({ datasetId }: Props) {
       );
 
       if (res.data?.chart) {
-        setCharts(prev => [res.data.chart, ...prev]);
+
+        const updatedCharts = [res.data.chart, ...charts];
+
+        setCharts(updatedCharts);
+
+        localStorage.setItem(
+          CACHE_KEY(datasetId),
+          JSON.stringify({
+            charts: updatedCharts,
+            correlations
+          })
+        );
+
       }
 
       setPrompt("");
 
     } catch {
+
       alert("AI could not generate a chart from that prompt.");
+
     }
 
     setPromptLoading(false);
@@ -151,16 +190,12 @@ export default function SmartCharts({ datasetId }: Props) {
     );
   }
 
-
-
   const validCharts = charts.filter(c => c?.data && c.data.length > 0);
-
-
 
   return (
     <div className="space-y-8">
 
-      {/* Prompt Chart Generator */}
+      {/* Prompt Generator */}
 
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
 
@@ -201,21 +236,11 @@ export default function SmartCharts({ datasetId }: Props) {
             Strong Relationships Detected
           </h2>
 
-          <div
-            className={`grid gap-6 ${
-              correlations.length === 1
-                ? "grid-cols-1"
-                : "grid-cols-1 md:grid-cols-2"
-            }`}
-          >
+          <div className={`grid gap-6 ${correlations.length === 1 ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"}`}>
 
             {correlations.map((c, i) => (
 
-              <div
-                key={i}
-                id={`corr-${i}`}
-                className="bg-gray-900 border border-gray-800 rounded-xl p-5"
-              >
+              <div key={i} id={`corr-${i}`} className="bg-gray-900 border border-gray-800 rounded-xl p-5">
 
                 <button
                   onClick={() => downloadChart(`corr-${i}`)}
@@ -224,9 +249,7 @@ export default function SmartCharts({ datasetId }: Props) {
                   Download PNG
                 </button>
 
-                <h3 className="text-white font-semibold">
-                  {c.title}
-                </h3>
+                <h3 className="text-white font-semibold">{c.title}</h3>
 
                 <p className="text-xs text-gray-400 mb-3">
                   Correlation: {c.correlation}
@@ -236,17 +259,9 @@ export default function SmartCharts({ datasetId }: Props) {
                   <ScatterChart>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
 
-                    <XAxis
-                      type="number"
-                      dataKey="x"
-                      tick={{ fill: "#9ca3af", fontSize: 11 }}
-                    />
+                    <XAxis type="number" dataKey="x" tick={{ fill: "#9ca3af", fontSize: 11 }} />
 
-                    <YAxis
-                      type="number"
-                      dataKey="y"
-                      tick={{ fill: "#9ca3af", fontSize: 11 }}
-                    />
+                    <YAxis type="number" dataKey="y" tick={{ fill: "#9ca3af", fontSize: 11 }} />
 
                     <Tooltip />
 
@@ -378,23 +393,10 @@ function RenderChart({ chart, colors }: { chart: ChartSuggestion; colors: string
       <ResponsiveContainer width="100%" height={220}>
         <ScatterChart>
           <CartesianGrid strokeDasharray="3 3" stroke="#1f2937"/>
-
-          <XAxis
-            type="number"
-            dataKey="x"
-            tick={axisStyle}
-          />
-
-          <YAxis
-            type="number"
-            dataKey="y"
-            tick={axisStyle}
-          />
-
+          <XAxis type="number" dataKey="x" tick={axisStyle}/>
+          <YAxis type="number" dataKey="y" tick={axisStyle}/>
           <Tooltip/>
-
           <Scatter data={data} fill={colors[0]}/>
-
         </ScatterChart>
       </ResponsiveContainer>
     );
@@ -402,4 +404,5 @@ function RenderChart({ chart, colors }: { chart: ChartSuggestion; colors: string
   }
 
   return null;
+
 }

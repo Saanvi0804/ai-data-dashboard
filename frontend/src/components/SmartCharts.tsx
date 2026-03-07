@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
+import html2canvas from "html2canvas";
+
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
@@ -40,38 +42,44 @@ export default function SmartCharts({ datasetId }: Props) {
   const { token } = useAuth();
 
   const [charts, setCharts] = useState<ChartSuggestion[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [loaded, setLoaded] = useState(false);
-
+  const [correlations, setCorrelations] = useState<any[]>([]);
   const [prompt, setPrompt] = useState("");
+
+  const [loading, setLoading] = useState(true);
   const [promptLoading, setPromptLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
 
-    if (!datasetId || !token || loaded) return;
+    if (!datasetId || !token) return;
 
     setLoading(true);
 
-    axios.post(
-      `${API}/api/suggest-charts`,
-      { dataset_id: datasetId },
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
-    .then((res) => {
-      setCharts(res.data?.charts ?? []);
-      setLoaded(true);
+    Promise.all([
+
+      axios.post(
+        `${API}/api/suggest-charts`,
+        { dataset_id: datasetId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      ),
+
+      axios.post(
+        `${API}/api/correlations`,
+        { dataset_id: datasetId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+
+    ])
+    .then(([chartsRes, corrRes]) => {
+
+      setCharts(chartsRes.data?.charts ?? []);
+      setCorrelations(corrRes.data?.correlations ?? []);
+
     })
-    .catch((err) => {
-      const msg =
-        err?.response?.status === 401
-          ? "Session expired. Please log in again."
-          : "Failed to generate charts.";
-      setError(msg);
-    })
+    .catch(() => setError("Failed to generate charts."))
     .finally(() => setLoading(false));
 
-  }, [datasetId, token, loaded]);
+  }, [datasetId, token]);
 
 
 
@@ -87,7 +95,7 @@ export default function SmartCharts({ datasetId }: Props) {
         `${API}/api/generate-chart-from-prompt`,
         {
           dataset_id: datasetId,
-          prompt: prompt
+          prompt
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -108,6 +116,22 @@ export default function SmartCharts({ datasetId }: Props) {
 
 
 
+  const downloadChart = async (id: string) => {
+
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    const canvas = await html2canvas(el);
+
+    const link = document.createElement("a");
+    link.download = "chart.png";
+    link.href = canvas.toDataURL();
+    link.click();
+
+  };
+
+
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -120,24 +144,14 @@ export default function SmartCharts({ datasetId }: Props) {
   if (error) {
     return (
       <div className="text-center py-20 text-red-400">
-        <p>{error}</p>
+        {error}
       </div>
     );
   }
 
 
 
-  const validCharts = charts.filter((chart) => {
-
-    if (!chart?.data || chart.data.length === 0) return false;
-
-    if (chart.type === "scatter") {
-      return chart.data.some(p => p.x !== undefined && p.y !== undefined);
-    }
-
-    return true;
-
-  });
+  const validCharts = charts.filter(c => c?.data && c.data.length > 0);
 
 
 
@@ -158,13 +172,13 @@ export default function SmartCharts({ datasetId }: Props) {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="Example: show average score by subject"
-            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm text-white outline-none"
+            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm text-white"
           />
 
           <button
             onClick={generateChartFromPrompt}
             disabled={promptLoading}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium transition"
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium"
           >
             {promptLoading ? "Generating..." : "Generate"}
           </button>
@@ -175,17 +189,79 @@ export default function SmartCharts({ datasetId }: Props) {
 
 
 
-      {/* Charts */}
+      {/* Correlation Charts */}
+
+      {correlations.length > 0 && (
+
+        <div className="space-y-4">
+
+          <h2 className="text-lg font-semibold text-indigo-400">
+            Strong Relationships Detected
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            {correlations.map((c, i) => (
+
+              <div key={i} id={`corr-${i}`} className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+
+                <button
+                  onClick={() => downloadChart(`corr-${i}`)}
+                  className="text-xs text-indigo-400 mb-2"
+                >
+                  Download PNG
+                </button>
+
+                <h3 className="text-white font-semibold">
+                  {c.title}
+                </h3>
+
+                <p className="text-xs text-gray-400 mb-3">
+                  Correlation: {c.correlation}
+                </p>
+
+                <ResponsiveContainer width="100%" height={220}>
+                  <ScatterChart>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                    <XAxis dataKey="x" />
+                    <YAxis dataKey="y" />
+                    <Tooltip />
+                    <Scatter data={c.data} fill="#6366f1" />
+                  </ScatterChart>
+                </ResponsiveContainer>
+
+              </div>
+
+            ))}
+
+          </div>
+
+        </div>
+
+      )}
+
+
+
+      {/* AI Charts */}
 
       {validCharts.length === 0 ? (
         <div className="text-center py-20 text-gray-500">
-          No useful charts could be generated for this dataset.
+          No useful charts could be generated.
         </div>
       ) : (
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
           {validCharts.map((chart, i) => (
-            <div key={i} className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+
+            <div key={i} id={`chart-${i}`} className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+
+              <button
+                onClick={() => downloadChart(`chart-${i}`)}
+                className="text-xs text-indigo-400 mb-2"
+              >
+                Download PNG
+              </button>
 
               <h3 className="text-white font-semibold mb-1">
                 {chart.title}
@@ -204,9 +280,11 @@ export default function SmartCharts({ datasetId }: Props) {
               )}
 
             </div>
+
           ))}
 
         </div>
+
       )}
 
     </div>
@@ -217,88 +295,73 @@ export default function SmartCharts({ datasetId }: Props) {
 
 function RenderChart({ chart, colors }: { chart: ChartSuggestion; colors: string[] }) {
 
-  const data = chart?.data ?? [];
-  const type = chart?.type;
+  const data = chart.data;
 
   const axisStyle = { fill: "#9ca3af", fontSize: 11 };
 
-  const tooltipStyle = {
-    backgroundColor: "#1f2937",
-    border: "1px solid #374151",
-    borderRadius: 8
-  };
+  if (chart.type === "bar" || chart.type === "histogram") {
 
-
-
-  if (type === "bar" || type === "histogram") {
     return (
       <ResponsiveContainer width="100%" height={220}>
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-          <XAxis dataKey="label" tick={axisStyle} />
-          <YAxis tick={axisStyle} />
-          <Tooltip contentStyle={tooltipStyle} />
-          <Bar dataKey="value" fill={colors[0]} radius={[4,4,0,0]} />
+          <XAxis dataKey="label" tick={axisStyle}/>
+          <YAxis tick={axisStyle}/>
+          <Tooltip/>
+          <Bar dataKey="value" fill={colors[0]} />
         </BarChart>
       </ResponsiveContainer>
     );
+
   }
 
+  if (chart.type === "line") {
 
-
-  if (type === "line") {
     return (
       <ResponsiveContainer width="100%" height={220}>
         <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-          <XAxis dataKey="label" tick={axisStyle} />
-          <YAxis tick={axisStyle} />
-          <Tooltip contentStyle={tooltipStyle} />
-          <Line type="monotone" dataKey="value" stroke={colors[0]} strokeWidth={2} dot={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#1f2937"/>
+          <XAxis dataKey="label" tick={axisStyle}/>
+          <YAxis tick={axisStyle}/>
+          <Tooltip/>
+          <Line type="monotone" dataKey="value" stroke={colors[0]}/>
         </LineChart>
       </ResponsiveContainer>
     );
+
   }
 
+  if (chart.type === "pie") {
 
-
-  if (type === "pie") {
     return (
       <ResponsiveContainer width="100%" height={220}>
         <PieChart>
-          <Pie
-            data={data}
-            dataKey="value"
-            nameKey="label"
-            cx="50%"
-            cy="50%"
-            outerRadius={80}
-            label
-          >
-            {data.map((_, i) => (
+          <Pie data={data} dataKey="value" nameKey="label" outerRadius={80}>
+            {data.map((_: any, i: number) =>
               <Cell key={i} fill={colors[i % colors.length]} />
-            ))}
+            )}
           </Pie>
-          <Tooltip contentStyle={tooltipStyle} />
+          <Tooltip/>
         </PieChart>
       </ResponsiveContainer>
     );
+
   }
 
+  if (chart.type === "scatter") {
 
-
-  if (type === "scatter") {
     return (
       <ResponsiveContainer width="100%" height={220}>
         <ScatterChart>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-          <XAxis dataKey="x" tick={axisStyle} />
-          <YAxis dataKey="y" tick={axisStyle} />
-          <Tooltip contentStyle={tooltipStyle} />
-          <Scatter data={data} fill={colors[0]} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#1f2937"/>
+          <XAxis dataKey="x"/>
+          <YAxis dataKey="y"/>
+          <Tooltip/>
+          <Scatter data={data} fill={colors[0]}/>
         </ScatterChart>
       </ResponsiveContainer>
     );
+
   }
 
   return null;

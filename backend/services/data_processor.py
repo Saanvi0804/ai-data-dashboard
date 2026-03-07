@@ -13,7 +13,7 @@ os.makedirs(STORAGE_DIR, exist_ok=True)
 
 def parse_csv(contents: bytes) -> pd.DataFrame:
     try:
-        return pd.read_csv(io.BytesIO(contents))
+        return pd.read_csv(io.BytesIO(contents), low_memory=False)
     except:
         return pd.read_csv(io.BytesIO(contents), encoding="latin1")
 

@@ -9,6 +9,7 @@ import numpy as np
 
 router = APIRouter()
 
+
 class SuggestRequest(BaseModel):
     dataset_id: str
 
@@ -26,7 +27,7 @@ def suggest_charts(req: SuggestRequest):
     if not api_key:
         raise HTTPException(status_code=500, detail="GROQ_API_KEY not set.")
 
-    # Build column information
+    # Build dataset summary for LLM
     col_info = []
 
     for col in df.columns:
@@ -47,14 +48,16 @@ def suggest_charts(req: SuggestRequest):
             )
 
     prompt = f"""
-You are a data visualization expert. Analyze this dataset and suggest the 4 most insightful charts to generate.
+You are a data visualization expert.
 
 Dataset has {len(df)} rows and these columns:
 {chr(10).join(col_info)}
 
-Return ONLY a valid JSON array with exactly 4 chart suggestions.
+Suggest the 4 most insightful charts.
 
-Each suggestion must contain:
+Return ONLY a valid JSON array.
+
+Each item must contain:
 "title"
 "type"
 "x"
@@ -63,15 +66,15 @@ Each suggestion must contain:
 "description"
 
 Rules:
-- type must be one of: bar, line, pie, scatter, histogram
+- type: bar, line, pie, scatter, histogram
 - pie: x categorical (<10 unique), y numeric
 - bar: x categorical, y numeric
-- line: x sequential/datetime, y numeric
-- scatter: both x and y numeric
+- line: x sequential or datetime
+- scatter: x numeric and y numeric
 - histogram: x numeric, y null
-- use only columns from dataset
+- use only dataset columns
 
-Return ONLY JSON.
+Return JSON only.
 """
 
     try:
@@ -95,7 +98,7 @@ Return ONLY JSON.
 
         content = response.json()["choices"][0]["message"]["content"].strip()
 
-        # Remove markdown if returned
+        # Remove markdown if LLM returns it
         if content.startswith("```"):
             content = content.split("```")[1]
             if content.startswith("json"):
@@ -105,18 +108,26 @@ Return ONLY JSON.
 
         charts = []
 
-        for s in suggestions:
+        for suggestion in suggestions:
 
             try:
 
-                chart_data = build_chart_data(df, s)
+                chart_data = build_chart_data(df, suggestion)
 
-                if chart_data and len(chart_data) > 0:
-                    charts.append({**s, "data": chart_data})
+                # Only return charts with valid data
+                if chart_data and isinstance(chart_data, list) and len(chart_data) > 0:
+
+                    charts.append({
+                        "title": suggestion.get("title"),
+                        "type": suggestion.get("type"),
+                        "x": suggestion.get("x"),
+                        "y": suggestion.get("y"),
+                        "description": suggestion.get("description"),
+                        "data": chart_data
+                    })
 
             except Exception as e:
-
-                print(f"Skipping chart {s.get('title')}: {e}")
+                print(f"Skipping chart {suggestion.get('title')}: {e}")
                 continue
 
         return {"charts": charts}
@@ -131,8 +142,8 @@ Return ONLY JSON.
 
 def build_chart_data(df, suggestion):
 
-    chart_type = suggestion["type"]
-    x_col = suggestion["x"]
+    chart_type = suggestion.get("type")
+    x_col = suggestion.get("x")
     y_col = suggestion.get("y")
     aggregation = suggestion.get("aggregation", "none")
 
@@ -163,19 +174,25 @@ def build_chart_data(df, suggestion):
     # SCATTER
     if chart_type == "scatter":
 
+        if not y_col:
+            return None
+
         df[x_col] = pd.to_numeric(df[x_col], errors="coerce")
         df[y_col] = pd.to_numeric(df[y_col], errors="coerce")
 
         sample = df[[x_col, y_col]].dropna().head(200)
+
+        if sample.empty:
+            return None
 
         return [
             {"x": float(row[x_col]), "y": float(row[y_col])}
             for _, row in sample.iterrows()
         ]
 
-    # OTHER CHARTS (BAR / PIE / LINE)
+    # BAR / PIE / LINE
 
-    if aggregation == "none" or not y_col:
+    if not y_col or aggregation == "none":
         return None
 
     df[y_col] = pd.to_numeric(df[y_col], errors="coerce")
@@ -193,6 +210,9 @@ def build_chart_data(df, suggestion):
         grouped = df.groupby(x_col)[y_col].sum()
 
     grouped = grouped.reset_index()
+
+    if grouped.empty:
+        return None
 
     return [
         {"label": str(row[x_col]), "value": round(float(row[y_col]), 2)}

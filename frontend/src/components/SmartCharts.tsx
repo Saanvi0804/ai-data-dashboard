@@ -28,6 +28,7 @@ interface ChartSuggestion {
   y: string | null;
   description: string;
   data: any[];
+  insight?: string;
 }
 
 interface Props {
@@ -120,7 +121,11 @@ export default function SmartCharts({ datasetId }: Props) {
           </p>
 
           <RenderChart chart={chart} colors={COLORS} />
-
+            {chart.insight && (
+              <div className="mt-4 text-sm text-indigo-300 bg-indigo-950/40 border border-indigo-900 rounded-lg px-3 py-2">
+                <span className="font-semibold">Insight:</span> {chart.insight}
+                </div>
+              )}
         </div>
       ))}
 

@@ -117,14 +117,19 @@ Return JSON only.
                 # Only return charts with valid data
                 if chart_data and isinstance(chart_data, list) and len(chart_data) > 0:
 
-                    charts.append({
+                    chart = {
                         "title": suggestion.get("title"),
                         "type": suggestion.get("type"),
                         "x": suggestion.get("x"),
                         "y": suggestion.get("y"),
                         "description": suggestion.get("description"),
                         "data": chart_data
-                    })
+                        }
+
+                    # Generate AI insight for the chart
+                    chart["insight"] = generate_chart_insight(chart, api_key)
+
+                    charts.append(chart)
 
             except Exception as e:
                 print(f"Skipping chart {suggestion.get('title')}: {e}")
@@ -218,3 +223,40 @@ def build_chart_data(df, suggestion):
         {"label": str(row[x_col]), "value": round(float(row[y_col]), 2)}
         for _, row in grouped.iterrows()
     ]
+
+def generate_chart_insight(chart, api_key):
+
+    try:
+
+        prompt = f"""
+You are a data analyst.
+
+Explain the insight from this chart.
+
+Chart title: {chart['title']}
+Chart data: {chart['data'][:10]}
+
+Write a short 1-2 sentence insight.
+"""
+
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.3,
+                "max_tokens": 100,
+            },
+            timeout=20,
+        )
+
+        response.raise_for_status()
+
+        return response.json()["choices"][0]["message"]["content"].strip()
+
+    except:
+        return None

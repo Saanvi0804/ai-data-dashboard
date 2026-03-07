@@ -29,29 +29,71 @@ export interface DatasetInfo {
 }
 
 export default function Home() {
-  const { token, logout } = useAuth();
+
+  const { token, logout, authLoading } = useAuth();
+
   const [dataset, setDataset] = useState<DatasetInfo | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [messages, setMessages] = useState<Message[]>([]);
+  const handleNewUpload = (data: DatasetInfo): void => {
+
+  setDataset(data);
+
+  localStorage.setItem("current_dataset", JSON.stringify(data));
+
+  setActiveTab("overview");
+
+  setMessages([]);
+
+};
 
   useEffect(() => {
-    const saved = localStorage.getItem("current_dataset");
-    if (saved) {
+
+    const loadDataset = async () => {
+
+      const saved = localStorage.getItem("current_dataset");
+
+      if (!saved) return;
+
       try {
+
         const parsed = JSON.parse(saved);
-        if (parsed && parsed.id) setDataset(parsed);
-      } catch (e) {
+
+        if (!parsed?.id) return;
+
+        const res = await fetch(
+          `https://ai-data-dashboard.onrender.com/api/dataset-info/${parsed.id}`
+        );
+
+        if (!res.ok) {
+          localStorage.removeItem("current_dataset");
+          return;
+        }
+
+        const freshData = await res.json();
+
+        setDataset({
+          ...parsed,
+          ...freshData
+        });
+
+      } catch {
         localStorage.removeItem("current_dataset");
       }
-    }
+
+    };
+
+    loadDataset();
+
   }, []);
 
-  const handleNewUpload = (data: DatasetInfo) => {
-    setDataset(data);
-    localStorage.setItem("current_dataset", JSON.stringify(data));
-    setActiveTab("overview");
-    setMessages([]);
-  };
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-gray-400">
+        Loading...
+      </div>
+    );
+  }
 
   if (!token) return <AuthForm />;
 

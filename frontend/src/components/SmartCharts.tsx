@@ -48,10 +48,11 @@ export default function SmartCharts({ datasetId }: Props) {
   const [loading, setLoading] = useState(true);
   const [promptLoading, setPromptLoading] = useState(false);
   const [error, setError] = useState("");
+  const [chartsLoaded, setChartsLoaded] = useState(false);
 
   useEffect(() => {
 
-    if (!datasetId || !token) return;
+    if (!datasetId || !token || chartsLoaded) return;
 
     setLoading(true);
 
@@ -74,6 +75,7 @@ export default function SmartCharts({ datasetId }: Props) {
 
       setCharts(chartsRes.data?.charts ?? []);
       setCorrelations(corrRes.data?.correlations ?? []);
+      setChartsLoaded(true);
 
     })
     .catch(() => setError("Failed to generate charts."))

@@ -46,19 +46,46 @@ def delete_dataset(dataset_id: str):
 
 def get_dataset_info(df: pd.DataFrame) -> dict:
     column_types = {}
+    stats = {}
+
     for col in df.columns:
         if pd.api.types.is_numeric_dtype(df[col]):
             column_types[col] = "numeric"
-        elif pd.api.types.is_datetime64_any_dtype(df[col]):
-            column_types[col] = "datetime"
+
+            stats[col] = {
+                "type": "numeric",
+                "mean": float(df[col].mean()),
+                "min": float(df[col].min()),
+                "max": float(df[col].max()),
+                "sum": float(df[col].sum()),
+                "null_count": int(df[col].isna().sum()),
+                "unique_count": int(df[col].nunique()),
+            }
+
         else:
-            # Check if strings are actually dates but stored as objects
             column_types[col] = "categorical"
+
+            top_values = (
+                df[col]
+                .value_counts()
+                .head(5)
+                .reset_index()
+                .values.tolist()
+            )
+
+            stats[col] = {
+                "type": "categorical",
+                "null_count": int(df[col].isna().sum()),
+                "unique_count": int(df[col].nunique()),
+                "top_values": [
+                    {"value": str(v[0]), "count": int(v[1])} for v in top_values
+                ],
+            }
 
     return {
         "rows": len(df),
         "columns": list(df.columns),
         "column_types": column_types,
-        # fillna("") is crucial so JSON doesn't break on NaN values
-        "preview": df.head(10).fillna("").to_dict(orient="records"),
+        "preview": df.head(5).fillna("").to_dict(orient="records"),
+        "stats": stats,
     }

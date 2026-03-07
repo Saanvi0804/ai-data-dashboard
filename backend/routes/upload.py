@@ -41,6 +41,9 @@ async def upload_csv(
             "filename": file.filename,
             "rows": info["rows"],
             "columns": info["columns"],
+            "preview": info["preview"],
+            "column_types": info["column_types"],
+            "stats": info["stats"],
         }
 
     except Exception as e:

@@ -7,6 +7,7 @@ import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer
 } from "recharts";
+import { PieChart, Pie, Cell } from "recharts";
 
 const API = "https://ai-data-dashboard.onrender.com";
 
@@ -87,23 +88,43 @@ export default function ChartBuilder({ datasetId, columns, columnTypes }: Props)
         <div className="h-[400px] mt-8 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
            {chartData.length > 0 ? (
              <ResponsiveContainer width="100%" height="100%">
-                {chartType === "bar" ? (
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                    <XAxis dataKey="label" tick={{fill: '#9ca3af', fontSize: 11}} />
-                    <YAxis tick={{fill: '#9ca3af', fontSize: 11}} />
-                    <Tooltip contentStyle={{backgroundColor: '#111827', border: '1px solid #374151'}} />
-                    <Bar dataKey="value" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                ) : (
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                    <XAxis dataKey="label" tick={{fill: '#9ca3af', fontSize: 11}} />
-                    <YAxis tick={{fill: '#9ca3af', fontSize: 11}} />
-                    <Tooltip contentStyle={{backgroundColor: '#111827', border: '1px solid #374151'}} />
-                    <Line type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={2} dot={false} />
-                  </LineChart>
-                )}
+                {chartType === "bar" && (
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                  <XAxis dataKey="label" tick={{ fill: "#9ca3af", fontSize: 11 }} />
+                  <YAxis tick={{ fill: "#9ca3af", fontSize: 11 }} />
+                  <Tooltip contentStyle={{ backgroundColor: "#111827", border: "1px solid #374151" }} />
+                  <Bar dataKey="value" fill="#6366f1" radius={[4,4,0,0]} />
+                </BarChart>
+              )}
+
+              {chartType === "line" && (
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                  <XAxis dataKey="label" tick={{ fill: "#9ca3af", fontSize: 11 }} />
+                  <YAxis tick={{ fill: "#9ca3af", fontSize: 11 }} />
+                  <Tooltip contentStyle={{ backgroundColor: "#111827", border: "1px solid #374151" }} />
+                  <Line type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={2} dot={false} />
+                </LineChart>
+              )}
+
+              {chartType === "pie" && (
+                <PieChart>
+                  <Tooltip />
+                  <Pie
+                    data={chartData}
+                    dataKey="value"
+                    nameKey="label"
+                    outerRadius={120}
+                    fill="#6366f1"
+                    label
+                  >
+                    {chartData.map((_, i) => (
+                      <Cell key={i} fill={["#6366f1","#8b5cf6","#06b6d4","#10b981","#f59e0b"][i % 5]} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              )}
              </ResponsiveContainer>
            ) : (
              <div className="flex items-center justify-center h-full text-gray-500">No data for selected columns</div>

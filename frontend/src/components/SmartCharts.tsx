@@ -75,14 +75,20 @@ export default function SmartCharts({ datasetId }: Props) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {charts.map((chart, i) => (
-        <div key={i} className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <h3 className="text-white font-semibold mb-1">{chart?.title ?? "Untitled Chart"}</h3>
-          <p className="text-gray-500 text-xs mb-4">{chart?.description ?? ""}</p>
-          <RenderChart chart={chart} colors={COLORS} />
-        </div>
-      ))}
-    </div>
+  {charts
+    .filter((chart) => Array.isArray(chart?.data) && chart.data.length > 0)
+    .map((chart, i) => (
+      <div key={i} className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+        <h3 className="text-white font-semibold mb-1">
+          {chart?.title ?? "Untitled Chart"}
+        </h3>
+        <p className="text-gray-500 text-xs mb-4">
+          {chart?.description ?? ""}
+        </p>
+        <RenderChart chart={chart} colors={COLORS} />
+      </div>
+    ))}
+</div>
   );
 }
 

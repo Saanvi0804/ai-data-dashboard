@@ -3,15 +3,20 @@ from pydantic import BaseModel
 from services.data_processor import load_dataset
 import numpy as np
 import pandas as pd
+import os
+import requests
 
 router = APIRouter()
+
 
 class CustomChartRequest(BaseModel):
     dataset_id: str
     x: str
     y: str | None = None
-    chart_type: str  # bar, line, pie, scatter, histogram
-    aggregation: str = "sum"  # sum, mean, count, none
+    chart_type: str
+    aggregation: str = "sum"
+    sort: str | None = "desc"
+    top_n: int | None = None
 
 
 @router.post("/custom-chart")
@@ -79,7 +84,6 @@ def custom_chart(req: CustomChartRequest):
                     detail="This chart type requires a Y column."
                 )
 
-            # ensure numeric Y column
             df[req.y] = pd.to_numeric(df[req.y], errors="coerce")
 
             if req.aggregation == "sum":
@@ -92,25 +96,19 @@ def custom_chart(req: CustomChartRequest):
                 grouped = df.groupby(req.x, dropna=False)[req.y].count()
 
             else:
-                grouped = df[[req.x, req.y]].dropna()
+                grouped = df.groupby(req.x, dropna=False)[req.y].sum()
 
-                data = [
-                    {
-                        "label": str(row[req.x]),
-                        "value": round(float(row[req.y]), 2)
-                    }
-                    for _, row in grouped.iterrows()
-                ]
+            grouped = grouped.reset_index()
 
-                chart = {
-                    "title": f"{req.y} by {req.x}",
-                    "type": req.chart_type,
-                    "data": data
-                    }
-                chart["insight"] = generate_chart_insight(chart)
-                return chart
+            # Sorting
+            if req.sort == "asc":
+                grouped = grouped.sort_values(req.y, ascending=True)
+            else:
+                grouped = grouped.sort_values(req.y, ascending=False)
 
-            grouped = grouped.reset_index().sort_values(req.y, ascending=False)
+            # Top N
+            if req.top_n:
+                grouped = grouped.head(req.top_n)
 
             data = [
                 {
@@ -121,31 +119,42 @@ def custom_chart(req: CustomChartRequest):
             ]
 
         chart = {
-            "title": f"{req.y} by {req.x}",
+            "title": f"{req.y} by {req.x}" if req.y else f"{req.x} distribution",
             "type": req.chart_type,
             "data": data
-            }
-        chart["insight"] = generate_chart_insight(chart)
-        return chart
+        }
+
+        insight = generate_chart_insight(chart)
+
+        return {
+            "data": data,
+            "insight": insight
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+
 def generate_chart_insight(chart):
 
     try:
 
         api_key = os.getenv("GROQ_API_KEY")
 
+        if not api_key:
+            return None
+
         prompt = f"""
 You are a data analyst.
 
-Explain the insight from this chart.
+Explain the key insight from this chart.
 
 Chart title: {chart['title']}
-Chart data sample: {chart['data'][:10]}
 
-Write a short insight.
+Chart data sample:
+{chart['data'][:10]}
+
+Write 1 short insight.
 """
 
         response = requests.post(
@@ -161,6 +170,8 @@ Write a short insight.
                 "max_tokens": 80,
             },
         )
+
+        response.raise_for_status()
 
         return response.json()["choices"][0]["message"]["content"].strip()
 

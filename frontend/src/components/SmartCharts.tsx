@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { useAuth } from "@/context/AuthContext"; // Import useAuth to fix "Not Authenticated"
+import { useAuth } from "@/context/AuthContext";
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
@@ -10,7 +10,16 @@ import {
 } from "recharts";
 
 const API = "https://ai-data-dashboard.onrender.com";
-const COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#3b82f6", "#f97316"];
+
+const COLORS = [
+  "#6366f1",
+  "#8b5cf6",
+  "#ec4899",
+  "#f59e0b",
+  "#10b981",
+  "#3b82f6",
+  "#f97316"
+];
 
 interface ChartSuggestion {
   title: string;
@@ -26,35 +35,38 @@ interface Props {
 }
 
 export default function SmartCharts({ datasetId }: Props) {
-  const { token } = useAuth(); // Retrieve the token from context
+
+  const { token } = useAuth();
+
   const [charts, setCharts] = useState<ChartSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!datasetId || !token) return; // Don't fetch if token is missing
+
+    if (!datasetId || !token) return;
 
     setLoading(true);
     setError("");
 
-    axios
-      .post(
-        `${API}/api/suggest-charts`, 
-        { dataset_id: datasetId },
-        { headers: { Authorization: `Bearer ${token}` } } // Fix: Send the token
-      )
-      .then((res) => {
-        // Safety check for the response format
-        setCharts(res.data?.charts ?? []);
-      })
-      .catch((err) => {
-        const msg = err?.response?.status === 401 
-          ? "Session expired. Please log in again." 
+    axios.post(
+      `${API}/api/suggest-charts`,
+      { dataset_id: datasetId },
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    .then((res) => {
+      setCharts(res.data?.charts ?? []);
+    })
+    .catch((err) => {
+      const msg =
+        err?.response?.status === 401
+          ? "Session expired. Please log in again."
           : "Failed to generate charts.";
-        setError(msg);
-      })
-      .finally(() => setLoading(false));
-  }, [datasetId, token]); // Add token to dependency array
+      setError(msg);
+    })
+    .finally(() => setLoading(false));
+
+  }, [datasetId, token]);
 
   if (loading) {
     return (
@@ -73,36 +85,60 @@ export default function SmartCharts({ datasetId }: Props) {
     );
   }
 
+  const validCharts = charts.filter((chart) => {
+
+    if (!chart?.data || chart.data.length === 0) return false;
+
+    if (chart.type === "scatter") {
+      return chart.data.some(p => p.x !== undefined && p.y !== undefined);
+    }
+
+    return true;
+
+  });
+
+  if (validCharts.length === 0) {
+    return (
+      <div className="text-center py-20 text-gray-500">
+        No useful charts could be generated for this dataset.
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-  {charts
-    .filter((chart) => Array.isArray(chart?.data) && chart.data.length > 0)
-    .map((chart, i) => (
-      <div key={i} className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-        <h3 className="text-white font-semibold mb-1">
-          {chart?.title ?? "Untitled Chart"}
-        </h3>
-        <p className="text-gray-500 text-xs mb-4">
-          {chart?.description ?? ""}
-        </p>
-        <RenderChart chart={chart} colors={COLORS} />
-      </div>
-    ))}
-</div>
+
+      {validCharts.map((chart, i) => (
+        <div key={i} className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+
+          <h3 className="text-white font-semibold mb-1">
+            {chart.title}
+          </h3>
+
+          <p className="text-gray-500 text-xs mb-4">
+            {chart.description}
+          </p>
+
+          <RenderChart chart={chart} colors={COLORS} />
+
+        </div>
+      ))}
+
+    </div>
   );
 }
 
 function RenderChart({ chart, colors }: { chart: ChartSuggestion; colors: string[] }) {
-  // Fix: Safe destructuring with defaults to prevent "undefined" crashes
+
   const data = chart?.data ?? [];
   const type = chart?.type;
 
-  if (!Array.isArray(data) || data.length === 0) {
-    return <p className="text-gray-600 text-sm text-center py-8">No data available</p>;
-  }
-
   const axisStyle = { fill: "#9ca3af", fontSize: 11 };
-  const tooltipStyle = { backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: 8 };
+  const tooltipStyle = {
+    backgroundColor: "#1f2937",
+    border: "1px solid #374151",
+    borderRadius: 8
+  };
 
   if (type === "bar" || type === "histogram") {
     return (
@@ -112,7 +148,7 @@ function RenderChart({ chart, colors }: { chart: ChartSuggestion; colors: string
           <XAxis dataKey="label" tick={axisStyle} />
           <YAxis tick={axisStyle} />
           <Tooltip contentStyle={tooltipStyle} />
-          <Bar dataKey="value" fill={colors[0]} radius={[4, 4, 0, 0]} />
+          <Bar dataKey="value" fill={colors[0]} radius={[4,4,0,0]} />
         </BarChart>
       </ResponsiveContainer>
     );
@@ -143,7 +179,7 @@ function RenderChart({ chart, colors }: { chart: ChartSuggestion; colors: string
             cx="50%"
             cy="50%"
             outerRadius={80}
-            label={(props) => `${props.name ?? ''}`}
+            label
           >
             {data.map((_, i) => (
               <Cell key={i} fill={colors[i % colors.length]} />
@@ -151,6 +187,20 @@ function RenderChart({ chart, colors }: { chart: ChartSuggestion; colors: string
           </Pie>
           <Tooltip contentStyle={tooltipStyle} />
         </PieChart>
+      </ResponsiveContainer>
+    );
+  }
+
+  if (type === "scatter") {
+    return (
+      <ResponsiveContainer width="100%" height={220}>
+        <ScatterChart>
+          <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+          <XAxis dataKey="x" tick={axisStyle} />
+          <YAxis dataKey="y" tick={axisStyle} />
+          <Tooltip contentStyle={tooltipStyle} />
+          <Scatter data={data} fill={colors[0]} />
+        </ScatterChart>
       </ResponsiveContainer>
     );
   }

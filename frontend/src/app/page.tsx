@@ -25,6 +25,7 @@ export interface DatasetInfo {
   column_types: Record<string, "numeric" | "categorical" | "datetime">;
   preview: any[];
   stats: any;
+  summary?: string;
 }
 
 export default function Home() {
@@ -97,7 +98,19 @@ export default function Home() {
                 </button>
               </div>
             </div>
-
+            {dataset.summary && (
+              <div className="bg-indigo-950/30 border border-indigo-800 rounded-xl p-4 flex gap-3 items-start">
+                <div className="text-xl">🤖</div>
+                <div>
+                  <p className="text-xs text-indigo-400 uppercase tracking-wider mb-1">
+                    AI Dataset Insight
+                  </p>
+                  <p className="text-sm text-indigo-200">
+                    {dataset.summary}
+                  </p>
+                </div>
+              </div>
+            )}
             <div className="flex p-1 bg-gray-900 border border-gray-800 rounded-xl w-fit">
               {["overview", "charts", "builder", "ask"].map((tab) => (
                 <button

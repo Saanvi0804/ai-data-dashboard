@@ -121,7 +121,7 @@ export default function SmartCharts({ datasetId }: Props) {
     const el = document.getElementById(id);
     if (!el) return;
 
-    const canvas = await html2canvas(el);
+    const canvas = await html2canvas(el, { scale: 2 } as any);
 
     const link = document.createElement("a");
     link.download = "chart.png";
@@ -199,11 +199,21 @@ export default function SmartCharts({ datasetId }: Props) {
             Strong Relationships Detected
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div
+            className={`grid gap-6 ${
+              correlations.length === 1
+                ? "grid-cols-1"
+                : "grid-cols-1 md:grid-cols-2"
+            }`}
+          >
 
             {correlations.map((c, i) => (
 
-              <div key={i} id={`corr-${i}`} className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+              <div
+                key={i}
+                id={`corr-${i}`}
+                className="bg-gray-900 border border-gray-800 rounded-xl p-5"
+              >
 
                 <button
                   onClick={() => downloadChart(`corr-${i}`)}
@@ -220,13 +230,26 @@ export default function SmartCharts({ datasetId }: Props) {
                   Correlation: {c.correlation}
                 </p>
 
-                <ResponsiveContainer width="100%" height={220}>
+                <ResponsiveContainer width="100%" height={260}>
                   <ScatterChart>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                    <XAxis dataKey="x" />
-                    <YAxis dataKey="y" />
+
+                    <XAxis
+                      type="number"
+                      dataKey="x"
+                      tick={{ fill: "#9ca3af", fontSize: 11 }}
+                    />
+
+                    <YAxis
+                      type="number"
+                      dataKey="y"
+                      tick={{ fill: "#9ca3af", fontSize: 11 }}
+                    />
+
                     <Tooltip />
+
                     <Scatter data={c.data} fill="#6366f1" />
+
                   </ScatterChart>
                 </ResponsiveContainer>
 
@@ -296,7 +319,6 @@ export default function SmartCharts({ datasetId }: Props) {
 function RenderChart({ chart, colors }: { chart: ChartSuggestion; colors: string[] }) {
 
   const data = chart.data;
-
   const axisStyle = { fill: "#9ca3af", fontSize: 11 };
 
   if (chart.type === "bar" || chart.type === "histogram") {
@@ -354,10 +376,23 @@ function RenderChart({ chart, colors }: { chart: ChartSuggestion; colors: string
       <ResponsiveContainer width="100%" height={220}>
         <ScatterChart>
           <CartesianGrid strokeDasharray="3 3" stroke="#1f2937"/>
-          <XAxis dataKey="x"/>
-          <YAxis dataKey="y"/>
+
+          <XAxis
+            type="number"
+            dataKey="x"
+            tick={axisStyle}
+          />
+
+          <YAxis
+            type="number"
+            dataKey="y"
+            tick={axisStyle}
+          />
+
           <Tooltip/>
+
           <Scatter data={data} fill={colors[0]}/>
+
         </ScatterChart>
       </ResponsiveContainer>
     );

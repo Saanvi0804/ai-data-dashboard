@@ -102,7 +102,13 @@ def custom_chart(req: CustomChartRequest):
                     for _, row in grouped.iterrows()
                 ]
 
-                return {"data": data}
+                chart = {
+                    "title": f"{req.y} by {req.x}",
+                    "type": req.chart_type,
+                    "data": data
+                    }
+                chart["insight"] = generate_chart_insight(chart)
+                return chart
 
             grouped = grouped.reset_index().sort_values(req.y, ascending=False)
 
@@ -114,7 +120,49 @@ def custom_chart(req: CustomChartRequest):
                 for _, row in grouped.iterrows()
             ]
 
-        return {"data": data}
+        chart = {
+            "title": f"{req.y} by {req.x}",
+            "type": req.chart_type,
+            "data": data
+            }
+        chart["insight"] = generate_chart_insight(chart)
+        return chart
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+def generate_chart_insight(chart):
+
+    try:
+
+        api_key = os.getenv("GROQ_API_KEY")
+
+        prompt = f"""
+You are a data analyst.
+
+Explain the insight from this chart.
+
+Chart title: {chart['title']}
+Chart data sample: {chart['data'][:10]}
+
+Write a short insight.
+"""
+
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.3,
+                "max_tokens": 80,
+            },
+        )
+
+        return response.json()["choices"][0]["message"]["content"].strip()
+
+    except:
+        return None

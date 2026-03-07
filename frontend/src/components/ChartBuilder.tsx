@@ -36,7 +36,13 @@ export default function ChartBuilder({ datasetId, columns, columnTypes }: Props)
   const [yCol, setYCol] = useState("");
   const [chartType, setChartType] = useState("bar");
 
+  const [aggregation, setAggregation] = useState("sum");
+  const [sort, setSort] = useState("desc");
+  const [topN, setTopN] = useState<number | "">("");
+
   const [chartData, setChartData] = useState<any[]>([]);
+  const [chartInsight, setChartInsight] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [generated, setGenerated] = useState(false);
@@ -47,16 +53,20 @@ export default function ChartBuilder({ datasetId, columns, columnTypes }: Props)
 
       setXCol(columns[0]);
 
-      const numeric = columns.find(c => columnTypes?.[c] === "numeric");
+      const numeric = columns.find(c => columnTypes[c] === "numeric");
 
       setYCol(numeric || columns[0]);
 
       setChartData([]);
       setGenerated(false);
       setError("");
+      setChartInsight(null);
+
     }
 
   }, [datasetId, columns, columnTypes]);
+
+
 
   const generate = async () => {
 
@@ -74,7 +84,9 @@ export default function ChartBuilder({ datasetId, columns, columnTypes }: Props)
           x: xCol,
           y: yCol,
           chart_type: chartType,
-          aggregation: "sum",
+          aggregation: aggregation,
+          sort: sort,
+          top_n: topN || null
         },
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -82,6 +94,8 @@ export default function ChartBuilder({ datasetId, columns, columnTypes }: Props)
       );
 
       setChartData(res.data?.data ?? []);
+      setChartInsight(res.data?.insight ?? null);
+
       setGenerated(true);
 
     } catch (e: any) {
@@ -93,14 +107,17 @@ export default function ChartBuilder({ datasetId, columns, columnTypes }: Props)
       setLoading(false);
 
     }
+
   };
+
+
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-6">
 
       {/* Controls */}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
 
         <select
           value={chartType}
@@ -112,17 +129,17 @@ export default function ChartBuilder({ datasetId, columns, columnTypes }: Props)
           <option value="pie">Pie Chart</option>
         </select>
 
+
         <select
           value={xCol}
           onChange={(e) => setXCol(e.target.value)}
           className="bg-gray-800 border border-gray-700 rounded-lg p-2 text-sm text-white"
         >
-          {columns?.map(c => (
+          {columns.map(c => (
             <option key={c} value={c}>{c}</option>
           ))}
         </select>
 
-        {/* Only numeric columns allowed for Y */}
 
         <select
           value={yCol}
@@ -130,13 +147,52 @@ export default function ChartBuilder({ datasetId, columns, columnTypes }: Props)
           className="bg-gray-800 border border-gray-700 rounded-lg p-2 text-sm text-white"
         >
           {columns
-            ?.filter(c => columnTypes[c] === "numeric")
+            .filter(c => columnTypes[c] === "numeric")
             .map(c => (
               <option key={c} value={c}>{c}</option>
             ))}
         </select>
 
+
+        <select
+          value={aggregation}
+          onChange={(e) => setAggregation(e.target.value)}
+          className="bg-gray-800 border border-gray-700 rounded-lg p-2 text-sm text-white"
+        >
+          <option value="sum">Sum</option>
+          <option value="mean">Mean</option>
+          <option value="count">Count</option>
+        </select>
+
+
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+          className="bg-gray-800 border border-gray-700 rounded-lg p-2 text-sm text-white"
+        >
+          <option value="desc">Sort Desc</option>
+          <option value="asc">Sort Asc</option>
+        </select>
+
+
       </div>
+
+
+      {/* Top N */}
+
+      <div className="flex gap-4 items-center">
+
+        <input
+          type="number"
+          placeholder="Top N (optional)"
+          value={topN}
+          onChange={(e) => setTopN(Number(e.target.value))}
+          className="bg-gray-800 border border-gray-700 rounded-lg p-2 text-sm text-white w-40"
+        />
+
+      </div>
+
+
 
       {/* Button */}
 
@@ -148,9 +204,12 @@ export default function ChartBuilder({ datasetId, columns, columnTypes }: Props)
         {loading ? "Generating..." : "Generate Chart"}
       </button>
 
+
       {error && (
         <p className="text-red-400 text-sm">{error}</p>
       )}
+
+
 
       {/* Chart */}
 
@@ -162,7 +221,6 @@ export default function ChartBuilder({ datasetId, columns, columnTypes }: Props)
 
             <ResponsiveContainer width="100%" height="100%">
 
-              {/* BAR */}
 
               {chartType === "bar" && (
                 <BarChart data={chartData}>
@@ -174,7 +232,6 @@ export default function ChartBuilder({ datasetId, columns, columnTypes }: Props)
                 </BarChart>
               )}
 
-              {/* LINE */}
 
               {chartType === "line" && (
                 <LineChart data={chartData}>
@@ -186,7 +243,6 @@ export default function ChartBuilder({ datasetId, columns, columnTypes }: Props)
                 </LineChart>
               )}
 
-              {/* PIE */}
 
               {chartType === "pie" && (
                 <PieChart>
@@ -205,14 +261,27 @@ export default function ChartBuilder({ datasetId, columns, columnTypes }: Props)
                 </PieChart>
               )}
 
+
             </ResponsiveContainer>
 
           ) : (
+
             <div className="flex items-center justify-center h-full text-gray-500">
               No data for selected columns
             </div>
+
           )}
 
+        </div>
+      )}
+
+
+
+      {/* Insight */}
+
+      {chartInsight && (
+        <div className="mt-4 text-sm text-indigo-300 bg-indigo-950/40 border border-indigo-900 rounded-lg px-3 py-2">
+          <span className="font-semibold">Insight:</span> {chartInsight}
         </div>
       )}
 

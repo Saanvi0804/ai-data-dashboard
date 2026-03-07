@@ -89,7 +89,10 @@ Format:
             raise HTTPException(status_code=400, detail="Could not generate chart data.")
 
         chart_spec["data"] = chart_data
-
+        chart_spec["insight"] = generate_chart_insight(
+            chart_spec,
+            api_key
+            )
         return {"chart": chart_spec}
 
     except Exception as e:
@@ -163,3 +166,37 @@ def build_chart_data(df, spec):
         {"label": str(row[x_col]), "value": round(float(row[y_col]), 2)}
         for _, row in grouped.iterrows()
     ]
+
+def generate_chart_insight(chart, api_key):
+
+    try:
+
+        prompt = f"""
+You are a data analyst.
+
+Explain the key insight from this chart in 1–2 sentences.
+
+Chart title: {chart['title']}
+Chart data sample: {chart['data'][:10]}
+"""
+
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.3,
+                "max_tokens": 80,
+            },
+        )
+
+        response.raise_for_status()
+
+        return response.json()["choices"][0]["message"]["content"].strip()
+
+    except:
+        return None
